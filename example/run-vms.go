@@ -1,13 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"qcli"
 	"sync"
-	"test-govmm/pkg/qemu"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -31,89 +32,89 @@ func (l qmpTestLogger) Errorf(format string, v ...interface{}) {
 	l.Errorf(format, v...)
 }
 
-func getFullConfig() qemu.Config {
-	// return qemu.Config{}
+func getFullConfig() qcli.Config {
+	// return qcli.Config{}
 
-	config := qemu.Config{
-		Machine: qemu.Machine{
-			Type:         qemu.MachineTypePC35,
-			Acceleration: qemu.MachineAccelerationKVM,
+	config := qcli.Config{
+		Machine: qcli.Machine{
+			Type:         qcli.MachineTypePC35,
+			Acceleration: qcli.MachineAccelerationKVM,
 			SMM:          "on",
 		},
 		CPUModel:      "qemu64",
 		CPUModelFlags: []string{"+x2apic"},
-		Memory: qemu.Memory{
+		Memory: qcli.Memory{
 			Size: "4096M",
 		},
-		RngDevices: []qemu.RngDevice{
-			qemu.RngDevice{
-				Driver:    qemu.VirtioRng,
+		RngDevices: []qcli.RngDevice{
+			qcli.RngDevice{
+				Driver:    qcli.VirtioRng,
 				ID:        "rng0",
 				Bus:       "pcie.0",
 				Addr:      "3",
-				Transport: qemu.TransportPCI,
-				Filename:  qemu.RngDevUrandom,
+				Transport: qcli.TransportPCI,
+				Filename:  qcli.RngDevUrandom,
 			},
 		},
-		BlkDevices: []qemu.BlockDevice{
-			qemu.BlockDevice{
-				Driver:    qemu.PFlash,
+		BlkDevices: []qcli.BlockDevice{
+			qcli.BlockDevice{
+				Driver:    qcli.PFlash,
 				ID:        "pflash0",
 				File:      "/usr/share/OVMF/OVMF_CODE.fd",
-				Format:    qemu.RAW,
-				Interface: qemu.PFlashInterface,
+				Format:    qcli.RAW,
+				Interface: qcli.PFlashInterface,
 				ReadOnly:  true,
 				DriveOnly: true,
 			},
-			qemu.BlockDevice{
-				Driver:    qemu.PFlash,
+			qcli.BlockDevice{
+				Driver:    qcli.PFlash,
 				ID:        "pflash1",
 				File:      "uefi_nvram.fd",
-				Format:    qemu.RAW,
-				Interface: qemu.PFlashInterface,
+				Format:    qcli.RAW,
+				Interface: qcli.PFlashInterface,
 				DriveOnly: true,
 			},
-			qemu.BlockDevice{
-				Driver:        qemu.VirtioBlock,
+			qcli.BlockDevice{
+				Driver:        qcli.VirtioBlock,
 				ID:            "drive0",
 				File:          "boot.qcow2",
-				AIO:           qemu.Threads,
-				Format:        qemu.QCOW2,
-				Interface:     qemu.NoInterface,
+				AIO:           qcli.Threads,
+				Format:        qcli.QCOW2,
+				Interface:     qcli.NoInterface,
 				DisableModern: true,
 				Serial:        "ssd-boot",
 				BlockSize:     512,
 				RotationRate:  1,
-				Cache:         qemu.CacheModeUnsafe,
-				Discard:       qemu.DiscardUnmap,
-				DetectZeroes:  qemu.DetectZeroesUnmap,
+				Cache:         qcli.CacheModeUnsafe,
+				Discard:       qcli.DiscardUnmap,
+				DetectZeroes:  qcli.DetectZeroesUnmap,
 				BootIndex:     0,
 			},
 		},
-		NetDevices: []qemu.NetDevice{
-			qemu.NetDevice{
-				Driver:     qemu.VirtioNet,
-				Type:       qemu.USER,
+		NetDevices: []qcli.NetDevice{
+			qcli.NetDevice{
+				Driver:     qcli.VirtioNet,
+				Type:       qcli.USER,
 				ID:         "user0",
 				MACAddress: "01:02:de:ad:be:ef",
 				Bus:        "pcie.0",
-				User: qemu.NetDeviceUser{
+				User: qcli.NetDeviceUser{
 					IPV4: true,
-					HostForward: qemu.PortRule{
+					HostForward: qcli.PortRule{
 						Protocol: "tcp",
-						Host:     qemu.Port{Port: 22222},
-						Guest:    qemu.Port{Port: 22},
+						Host:     qcli.Port{Port: 22222},
+						Guest:    qcli.Port{Port: 22},
 					},
 				},
 			},
 		},
-		LegacySerialDevices: []qemu.LegacySerialDevice{
-			qemu.LegacySerialDevice{
+		LegacySerialDevices: []qcli.LegacySerialDevice{
+			qcli.LegacySerialDevice{
 				MonMux: true,
 			},
 		},
-		PCIeRootPortDevices: []qemu.PCIeRootPortDevice{
-			qemu.PCIeRootPortDevice{
+		PCIeRootPortDevices: []qcli.PCIeRootPortDevice{
+			qcli.PCIeRootPortDevice{
 				ID:            "root-port.0x6.0",
 				Bus:           "pcie.0",
 				Chassis:       "0x0",
@@ -122,7 +123,7 @@ func getFullConfig() qemu.Config {
 				Addr:          "0x4",
 				Multifunction: true,
 			},
-			qemu.PCIeRootPortDevice{
+			qcli.PCIeRootPortDevice{
 				ID:            "root-port.0x6.1",
 				Bus:           "pcie.0",
 				Chassis:       "0x1",
@@ -136,7 +137,7 @@ func getFullConfig() qemu.Config {
 			"ICH9-LPC.disable_s3=1",
 			"driver=cfi.pflash01,property=secure,value=on",
 		},
-		Knobs: qemu.Knobs{
+		Knobs: qcli.Knobs{
 			NoGraphic:     true,
 			NoHPET:        true,
 			Snapshot:      true,
@@ -145,7 +146,7 @@ func getFullConfig() qemu.Config {
 			FileBackedMem: true,
 			MemShared:     true,
 		},
-		SMP: qemu.SMP{
+		SMP: qcli.SMP{
 			CPUs: 4,
 		},
 	}
@@ -153,33 +154,33 @@ func getFullConfig() qemu.Config {
 	return config
 }
 
-func getRngConfig() qemu.Config {
-	config := qemu.Config{
-		Machine: qemu.Machine{
-			Type:         qemu.MachineTypePC35,
-			Acceleration: qemu.MachineAccelerationKVM,
+func getRngConfig() qcli.Config {
+	config := qcli.Config{
+		Machine: qcli.Machine{
+			Type:         qcli.MachineTypePC35,
+			Acceleration: qcli.MachineAccelerationKVM,
 			SMM:          "on",
 		},
 		CPUModel:      "qemu64",
 		CPUModelFlags: []string{"+x2apic"},
-		Memory: qemu.Memory{
+		Memory: qcli.Memory{
 			Size: "4096",
 		},
-		RngDevices: []qemu.RngDevice{
-			qemu.RngDevice{
-				Driver:    qemu.VirtioRng,
+		RngDevices: []qcli.RngDevice{
+			qcli.RngDevice{
+				Driver:    qcli.VirtioRng,
 				ID:        "rng0",
 				Bus:       "pcie.0",
 				Addr:      "3",
-				Transport: qemu.TransportPCI,
-				Filename:  qemu.RngDevUrandom,
+				Transport: qcli.TransportPCI,
+				Filename:  qcli.RngDevUrandom,
 			},
 		},
 		GlobalParams: []string{
 			"ICH9-LPC.disable_s3=1",
 			"driver=cfi.pflash01,property=secure,value=on",
 		},
-		Knobs: qemu.Knobs{
+		Knobs: qcli.Knobs{
 			NoGraphic:     true,
 			NoHPET:        true,
 			Snapshot:      true,
@@ -188,7 +189,7 @@ func getRngConfig() qemu.Config {
 			FileBackedMem: true,
 			MemShared:     true,
 		},
-		SMP: qemu.SMP{
+		SMP: qcli.SMP{
 			CPUs: 4,
 		},
 	}
@@ -199,7 +200,7 @@ func getRngConfig() qemu.Config {
 func writeConfig() {
 	config := getRngConfig()
 
-	content, err := qemu.MarshalConfig(config)
+	content, err := qcli.MarshalConfig(config)
 	if err != nil {
 		panic(err)
 	}
@@ -208,15 +209,15 @@ func writeConfig() {
 	fmt.Printf("done\n")
 }
 
-func readConfig(confFile string) (*qemu.Config, error) {
+func readConfig(confFile string) (*qcli.Config, error) {
 	log.Infof("Reading machine config from %s...", confFile)
 	content, err := ioutil.ReadFile(confFile)
 	if err != nil {
 		panic(err)
 	}
 
-	log.Infof("Loading config into qemu.Config...")
-	config, err := qemu.UnmarshalConfig(content)
+	log.Infof("Loading config into qcli.Config...")
+	config, err := qcli.UnmarshalConfig(content)
 	if err != nil {
 		panic(err)
 	}
@@ -227,7 +228,7 @@ func readConfig(confFile string) (*qemu.Config, error) {
 
 		fmt.Printf("Generating VM command line...")
 		logger := qmpTestLogger{}
-		params, err := qemu.ConfigureParams(config, logger)
+		params, err := qcli.ConfigureParams(config, logger)
 		if err != nil {
 			panic(err)
 		}
@@ -242,17 +243,18 @@ func readConfig(confFile string) (*qemu.Config, error) {
 type VM struct {
 	Ctx    context.Context
 	Cancel context.CancelFunc
-	Config *qemu.Config
+	Config *qcli.Config
 	Cmd    *exec.Cmd
 }
 
-func newVM(ctx context.Context, vmConfig *qemu.Config) (*VM, error) {
+func newVM(ctx context.Context, vmConfig *qcli.Config) (*VM, error) {
 	vmCtx, cancelFn := context.WithCancel(ctx)
 
-	params, err := qemu.ConfigureParams(vmConfig, nil)
+	params, err := qcli.ConfigureParams(vmConfig, nil)
 	if err != nil {
 		return &VM{}, err
 	}
+	log.Infof("Cmd: %s", params)
 
 	return &VM{
 		Ctx:    vmCtx,
@@ -264,14 +266,19 @@ func newVM(ctx context.Context, vmConfig *qemu.Config) (*VM, error) {
 
 func runVM(vm *VM) error {
 	log.Infof("VM:%s starting QEMU process", vm.Config.Name)
+	var stderr bytes.Buffer
+
+	vm.Cmd.Stderr = &stderr
 	err := vm.Cmd.Start()
 	if err != nil {
+		log.Errorf("VM:%s failed with: %s", stderr.String())
 		return err
 	}
 
 	log.Infof("VM:%s waiting for QEMU process to exit...", vm.Config.Name)
 	err = vm.Cmd.Wait()
 	if err != nil {
+		log.Errorf("VM:%s wait failed with: %s", stderr.String())
 		return err
 	}
 	log.Infof("VM:%s QEMU process exited", vm.Config.Name)
@@ -279,7 +286,7 @@ func runVM(vm *VM) error {
 	return nil
 }
 
-func BackgroundVM(config *qemu.Config, timeout time.Duration) error {
+func BackgroundVM(config *qcli.Config, timeout time.Duration) error {
 	var wg sync.WaitGroup
 	disconnectedCh := make(chan struct{})
 	doneCh := make(chan struct{})
@@ -305,7 +312,7 @@ func BackgroundVM(config *qemu.Config, timeout time.Duration) error {
 	}(vm)
 
 	// Set up our options.  We don't want any logging or to receive any events.
-	cfg := qemu.QMPConfig{
+	cfg := qcli.QMPConfig{
 		Logger: qmpTestLogger{},
 	}
 
@@ -316,7 +323,7 @@ func BackgroundVM(config *qemu.Config, timeout time.Duration) error {
 
 	qmpSocketFile := config.QMPSockets[0].Name
 	log.Infof("VM:%s connecting to QMP socket %s", vmName, qmpSocketFile)
-	q, qver, err := qemu.QMPStart(context.Background(), qmpSocketFile, cfg, disconnectedCh)
+	q, qver, err := qcli.QMPStart(context.Background(), qmpSocketFile, cfg, disconnectedCh)
 	if err != nil {
 		return fmt.Errorf("Failed to connect to qmp socket: %s", err.Error())
 	}
@@ -368,7 +375,7 @@ func BackgroundVM(config *qemu.Config, timeout time.Duration) error {
 	return nil
 }
 
-func StartVM(config *qemu.Config) error {
+func StartVM(config *qcli.Config) error {
 	ctx := config.Ctx
 	if ctx == nil {
 		ctx = context.TODO()
@@ -378,7 +385,7 @@ func StartVM(config *qemu.Config) error {
 		config.Path = "qemu-system-x86_64"
 	}
 
-	params, err := qemu.ConfigureParams(config, qmpTestLogger{})
+	params, err := qcli.ConfigureParams(config, qmpTestLogger{})
 	if err != nil {
 		return err
 	}
@@ -423,7 +430,7 @@ func main() {
 	}
 
 	wg.Add(1)
-	go func(cfg *qemu.Config, wg *sync.WaitGroup) {
+	go func(cfg *qcli.Config, wg *sync.WaitGroup) {
 		log.Infof("VM:%s starting in background...", cfg.Name)
 		err = BackgroundVM(cfg, 10*time.Second)
 		if err != nil {
@@ -434,7 +441,7 @@ func main() {
 	}(vm1Config, &wg)
 
 	wg.Add(1)
-	go func(cfg *qemu.Config, wg *sync.WaitGroup) {
+	go func(cfg *qcli.Config, wg *sync.WaitGroup) {
 		log.Infof("VM:%s starting in background...", cfg.Name)
 		err = BackgroundVM(cfg, 100*time.Millisecond)
 		if err != nil {
