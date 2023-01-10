@@ -16,7 +16,7 @@
 // limitations under the License.
 */
 
-package qemu
+package qcli
 
 import "testing"
 
