@@ -23,7 +23,7 @@
 // -qmp unix:/tmp/qmp-socket,server,nowait.  For more information see the
 // example below.
 
-package qemu
+package qcli
 
 import (
 	"bytes"

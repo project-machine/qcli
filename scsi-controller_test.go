@@ -1,4 +1,4 @@
-package qemu
+package qcli
 
 import "testing"
 
