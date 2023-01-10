@@ -28,6 +28,7 @@ package qcli
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"os"
 	"os/exec"
@@ -614,7 +615,27 @@ func ConfigureParams(config *Config, logger QMPLog) ([]string, error) {
 	return config.qemuParams, nil
 }
 
-func MarshalConfig(config Config) ([]byte, error) {
+func ReadConfig(configFile string) (*Config, error) {
+	content, err := ioutil.ReadFile(configFile)
+
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read config file '%s':%s", configFile, err)
+	}
+
+	return UnmarshalConfig(content)
+}
+
+func WriteConfig(configFile string, config *Config) error {
+
+	content, err := MarshalConfig(config)
+	if err != nil {
+		return fmt.Errorf("Failed to marshal qcli.Config: %s", err)
+	}
+
+	return ioutil.WriteFile(configFile, content, 0644)
+}
+
+func MarshalConfig(config *Config) ([]byte, error) {
 	content, err := yaml.Marshal(config)
 	if err != nil {
 		return []byte{}, err
