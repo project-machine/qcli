@@ -187,6 +187,10 @@ func (config *Config) appendDevices() error {
 			for _, d := range config.SerialDevices {
 				config.devices = append(config.devices, d)
 			}
+		case "UEFIFirmwareDevices":
+			for _, d := range config.UEFIFirmwareDevices {
+				config.devices = append(config.devices, d)
+			}
 		}
 	}
 
