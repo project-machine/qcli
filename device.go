@@ -74,6 +74,9 @@ const (
 	// SCSICD is the block device driver
 	SCSICD DeviceDriver = "scsi-cd"
 
+	// NVME is the block device driver
+	NVME DeviceDriver = "nvme"
+
 	// USBStorage is the block device driver
 	USBStorage DeviceDriver = "usb-storage"
 
