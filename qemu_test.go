@@ -63,10 +63,8 @@ func testConfigAppend(config *Config, structure interface{}, expected string, t 
 	case Object:
 		objParams := s.QemuParams(config)
 		config.qemuParams = append(config.qemuParams, objParams...)
+
 	case Knobs:
-		if expected == memPathString {
-			t.Fatalf("WARK: structure type: device")
-		}
 		config.Knobs = s
 		config.appendKnobs()
 
@@ -690,10 +688,11 @@ func TestBadCPUs(t *testing.T) {
 }
 
 var (
-	fullVM = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=/usr/share/OVMF/OVMF_CODE.fd,id=pflash0,if=pflash,format=raw,readonly=on -drive file=uefi_nvram.fd,id=pflash1,if=pflash,format=raw -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x4,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x4.0x1 -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
+	fullUefiVM = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x4,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x4.0x1 -drive if=pflash,format=raw,readonly,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=uefi_nvram.fd -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
+	fullBiosVM = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x4,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x4.0x1 -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
 )
 
-func TestFullMachineCommand(t *testing.T) {
+func fullVMConfig() *Config {
 	c := &Config{
 		Machine: Machine{
 			Type:         MachineTypePC35,
@@ -716,23 +715,6 @@ func TestFullMachineCommand(t *testing.T) {
 			},
 		},
 		BlkDevices: []BlockDevice{
-			BlockDevice{
-				Driver:    PFlash,
-				ID:        "pflash0",
-				File:      "/usr/share/OVMF/OVMF_CODE.fd",
-				Format:    RAW,
-				Interface: PFlashInterface,
-				ReadOnly:  true,
-				DriveOnly: true,
-			},
-			BlockDevice{
-				Driver:    PFlash,
-				ID:        "pflash1",
-				File:      "uefi_nvram.fd",
-				Format:    RAW,
-				Interface: PFlashInterface,
-				DriveOnly: true,
-			},
 			BlockDevice{
 				Driver:        VirtioBlock,
 				ID:            "drive0",
@@ -827,14 +809,39 @@ func TestFullMachineCommand(t *testing.T) {
 			CPUs: 4,
 		},
 	}
+	return c
+}
 
-	expected := fullVM
+func TestFullUEFIMachineCommand(t *testing.T) {
+	c := fullVMConfig()
+
+	u := UEFIFirmwareDevice{
+		Code: "/usr/share/OVMF/OVMF_CODE.fd",
+		Vars: "uefi_nvram.fd",
+	}
+	c.UEFIFirmwareDevices = append(c.UEFIFirmwareDevices, u)
+
+	expected := fullUefiVM
 	qemuParams, err := ConfigureParams(c, nil)
 	if err != nil {
 		t.Fatalf("Failed to Configure parameters, error: %s", err.Error())
 	}
 	result := strings.Join(qemuParams, " ")
 	if expected != result {
-		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\n   found[%s]", expected, result)
+		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\nfound    [%s]", expected, result)
+	}
+}
+
+func TestFullBiosMachineCommand(t *testing.T) {
+	c := fullVMConfig()
+
+	expected := fullBiosVM
+	qemuParams, err := ConfigureParams(c, nil)
+	if err != nil {
+		t.Fatalf("Failed to Configure parameters, error: %s", err.Error())
+	}
+	result := strings.Join(qemuParams, " ")
+	if expected != result {
+		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\nfound    [%s]", expected, result)
 	}
 }

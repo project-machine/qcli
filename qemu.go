@@ -197,6 +197,9 @@ type Config struct {
 	// Path is the qemu binary path.
 	Path string `yaml:"qemu-binary-path"`
 
+	// StateDir is the directory where VM state will be stored
+	StateDir string `yaml:"state-dir"`
+
 	// Ctx is the context used when launching qemu.
 	Ctx context.Context
 
@@ -239,6 +242,7 @@ type Config struct {
 	SerialDevices       []SerialDevice       `yaml:"serial-devices"`
 	MonitorDevices      []MonitorDevice      `yaml:"monitor-devices"`
 	PCIeRootPortDevices []PCIeRootPortDevice `yaml:"pcie-root-port-devices"`
+	UEFIFirmwareDevices []UEFIFirmwareDevice `yaml:"uefi-firmware-devices"`
 
 	// RTC is the qemu Real Time Clock configuration
 	RTC RTC `yaml:"real-time-clock"`
@@ -485,6 +489,7 @@ func (config *Config) appendMemoryKnobs() {
 }
 
 func (config *Config) appendKnobs() {
+
 	config.appendMemoryKnobs()
 
 	if config.Knobs.NoUserConfig {
