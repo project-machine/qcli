@@ -245,6 +245,7 @@ type VM struct {
 	Cancel context.CancelFunc
 	Config *qcli.Config
 	Cmd    *exec.Cmd
+	QMP    *qcli.QMP
 }
 
 func newVM(ctx context.Context, vmConfig *qcli.Config) (*VM, error) {
@@ -413,6 +414,8 @@ func main() {
 	vm1 := "machine-vm1.yaml"
 	vm2 := "machine-vm2.yaml"
 
+	vmConfigs := []qcli.Config{}
+
 	//if len(os.Args) > 1 {
 	//	confFile = os.Args[1]
 	//}
@@ -422,12 +425,14 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	vmConfigs = append(vmConfigs, vm1Config)
 
 	log.Infof("Reading config for VM2")
 	vm2Config, err := readConfig(vm2)
 	if err != nil {
 		panic(err)
 	}
+	vmConfigs = append(vmConfigs, vm1Config)
 
 	wg.Add(1)
 	go func(cfg *qcli.Config, wg *sync.WaitGroup) {

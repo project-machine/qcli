@@ -296,6 +296,9 @@ type NetDevice struct {
 
 	// -netdev socket,mcast=
 	McastSocket NetDeviceMcastSocket `yaml:"mcast-socket"`
+
+	// bootindex
+	BootIndex int `yaml:"bootindex"`
 }
 
 // VirtioNetTransport is a map of the virtio-net device name that corresponds
