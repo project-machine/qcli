@@ -580,6 +580,37 @@ func (config *Config) appendLogFile() {
 	}
 }
 
+// GetSocketPaths seaches config for Chardev,Serial,Monitor and QMP sockets
+func GetSocketPaths(config *Config) ([]string, error) {
+	var sockets []string
+
+	for _, cdev := range config.CharDevices {
+		if cdev.Backend == Socket {
+			sockets = append(sockets, cdev.Path)
+		}
+	}
+
+	for _, mdev := range config.MonitorDevices {
+		if mdev.Backend == Socket {
+			sockets = append(sockets, mdev.Path)
+		}
+	}
+
+	for _, ldev := range config.LegacySerialDevices {
+		if ldev.Backend == Socket {
+			sockets = append(sockets, ldev.Path)
+		}
+	}
+
+	for _, qdev := range config.QMPSockets {
+		if qdev.Type == Unix {
+			sockets = append(sockets, qdev.Name)
+		}
+	}
+
+	return sockets, nil
+}
+
 func ConfigureParams(config *Config, logger QMPLog) ([]string, error) {
 	var err error
 	fmt.Printf("Configuring parameters...\n")

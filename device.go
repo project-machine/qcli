@@ -208,7 +208,7 @@ func (config *Config) appendDevices() error {
 	}
 
 	if len(errors) > 0 {
-		return fmt.Errorf("Failed to append %d devices:\n%s", len(errors), strings.Join(errors, "\n"))
+		return fmt.Errorf("Failed to append %d devices: %s", len(errors), strings.Join(errors, ", "))
 	}
 
 	return nil

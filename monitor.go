@@ -32,20 +32,31 @@ import (
 
 // MonitorDevice represents a qemu legacy human monitor device.
 type MonitorDevice struct {
-	Name      string `yaml:"name"`
-	ChardevID string `yaml:"chardev-id"`
+	Name      string            `yaml:"name"`
+	ChardevID string            `yaml:"chardev-id"`
+	Backend   CharDeviceBackend `yaml:"backend"`
+	Path      string            `yaml:"path"`
 }
 
 // Valid returns true if the MonitorDevice structure is valid and complete.
 func (dev MonitorDevice) Valid() error {
-	// One must be set
-	if dev.Name == "" && dev.ChardevID == "" {
-		return fmt.Errorf("LegacySerialDevice requires either Name or ChardevID field to be set")
-	}
+	if dev.Backend == "" {
+		// One must be set
+		if dev.Name == "" && dev.ChardevID == "" {
+			return fmt.Errorf("MonitorDevice requires either Name or ChardevID field to be set")
+		}
 
-	// Name and ChardevID are mutually exclusive
-	if dev.Name != "" && dev.ChardevID != "" {
-		return fmt.Errorf("LegacySerialDevice Name and ChardevID field are mutually exclusive")
+		// Name and ChardevID are mutually exclusive
+		if dev.Name != "" && dev.ChardevID != "" {
+			return fmt.Errorf("MonitorDevice Name and ChardevID field are mutually exclusive")
+		}
+	} else {
+		if dev.Backend != Socket {
+			return fmt.Errorf("MonitorDevice only supports Backend='unix'")
+		}
+		if dev.Path == "" {
+			return fmt.Errorf("MonitorDevice with Backend must have Path")
+		}
 	}
 
 	return nil
@@ -56,11 +67,15 @@ func (dev MonitorDevice) QemuParams(config *Config) []string {
 	var qemuParams []string
 	var monParams []string
 
-	if dev.Name != "" && dev.ChardevID == "" {
-		monParams = append(monParams, dev.Name)
-	}
-	if dev.ChardevID != "" && dev.Name == "" {
-		monParams = append(monParams, fmt.Sprintf("chardev:%s", dev.ChardevID))
+	if dev.Backend == Socket {
+		monParams = append(monParams, fmt.Sprintf("unix:%s,server=on,wait=off", dev.Path))
+	} else {
+		if dev.Name != "" && dev.ChardevID == "" {
+			monParams = append(monParams, dev.Name)
+		}
+		if dev.ChardevID != "" && dev.Name == "" {
+			monParams = append(monParams, fmt.Sprintf("chardev:%s", dev.ChardevID))
+		}
 	}
 
 	qemuParams = append(qemuParams, "-monitor")

@@ -19,6 +19,7 @@ package qcli
 import (
 	"os"
 	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
@@ -843,5 +844,47 @@ func TestFullBiosMachineCommand(t *testing.T) {
 	result := strings.Join(qemuParams, " ")
 	if expected != result {
 		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\nfound    [%s]", expected, result)
+	}
+}
+
+func TestGetSocketsPath(t *testing.T) {
+	serial := "/tmp/serial.sock"
+	monitor := "/tmp/monitor.sock"
+	qmp := "/tmp/qmp.sock"
+	expected := []string{serial, monitor, qmp}
+
+	c := &Config{
+		LegacySerialDevices: []LegacySerialDevice{
+			LegacySerialDevice{
+				Backend: Socket,
+				Path:    serial,
+			},
+		},
+		MonitorDevices: []MonitorDevice{
+			MonitorDevice{
+				Backend: Socket,
+				Path:    monitor,
+			},
+		},
+		QMPSockets: []QMPSocket{
+			QMPSocket{
+				Type: Unix,
+				Name: qmp,
+			},
+		},
+	}
+
+	sockets, err := GetSocketPaths(c)
+	if err != nil {
+		t.Fatalf("Failed to get sockets from config: %s", err)
+	}
+
+	// sort them
+	sort.Strings(expected)
+	sort.Strings(sockets)
+
+	ok := reflect.DeepEqual(expected, sockets)
+	if !ok {
+		t.Errorf("Expected %v, found %v", expected, sockets)
 	}
 }
