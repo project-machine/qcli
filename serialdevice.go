@@ -37,11 +37,16 @@ type LegacySerialDevice struct {
 	Name      string `yaml:"name"`
 	MonMux    bool   `yaml:"mon-mux-enable"`
 	// Set if needing to multiplex serial and HMP monitor output togeter on stdio
+	Backend CharDeviceBackend `yaml:"backend"`
+	Path    string            `yaml:"path"`
 }
 
 // Valid returns true if the LegacySerialDevice structure is valid and complete.
 func (dev LegacySerialDevice) Valid() error {
-	if !dev.MonMux {
+	if dev.MonMux {
+		return nil
+	}
+	if dev.Backend == "" {
 		// One must be set
 		if dev.Name == "" && dev.ChardevID == "" {
 			return fmt.Errorf("LegacySerialDevice requires either Name or ChardevID field to be set")
@@ -50,6 +55,13 @@ func (dev LegacySerialDevice) Valid() error {
 		// Name and ChardevID are mutually exclusive
 		if dev.Name != "" && dev.ChardevID != "" {
 			return fmt.Errorf("LegacySerialDevice Name and ChardevID field are mutually exclusive")
+		}
+	} else {
+		if dev.Backend != Socket {
+			return fmt.Errorf("LegacySerialDevice only supports Backend='unix'")
+		}
+		if dev.Path == "" {
+			return fmt.Errorf("LegacySerialDevice with Backend must have Path")
 		}
 	}
 
@@ -64,11 +76,15 @@ func (dev LegacySerialDevice) QemuParams(config *Config) []string {
 	if dev.MonMux {
 		sdevParams = append(sdevParams, "mon:stdio")
 	} else {
-		if dev.Name != "" && dev.ChardevID == "" {
-			sdevParams = append(sdevParams, dev.Name)
-		}
-		if dev.ChardevID != "" && dev.Name == "" {
-			sdevParams = append(sdevParams, fmt.Sprintf("chardev:%s", dev.ChardevID))
+		if dev.Backend == Socket {
+			sdevParams = append(sdevParams, fmt.Sprintf("unix:%s,server=on,wait=off", dev.Path))
+		} else {
+			if dev.Name != "" && dev.ChardevID == "" {
+				sdevParams = append(sdevParams, dev.Name)
+			}
+			if dev.ChardevID != "" && dev.Name == "" {
+				sdevParams = append(sdevParams, fmt.Sprintf("chardev:%s", dev.ChardevID))
+			}
 		}
 	}
 

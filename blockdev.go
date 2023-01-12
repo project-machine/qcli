@@ -156,23 +156,23 @@ var VirtioBlockTransport = map[VirtioTransport]string{
 
 // Valid returns true if the BlockDevice structure is valid and complete.
 func (blkdev BlockDevice) Valid() error {
-	if blkdev.Driver == "" {
-		return fmt.Errorf("BlockDevice missing Driver")
-	}
 	if blkdev.ID == "" {
 		return fmt.Errorf("BlockDevice missing ID")
 	}
+	if blkdev.Driver == "" {
+		return fmt.Errorf("BlockDevice ID=%s missing Driver", blkdev.ID)
+	}
 	if blkdev.File == "" {
-		return fmt.Errorf("BlockDevice missing File")
+		return fmt.Errorf("BlockDevice ID=%s missing File", blkdev.ID)
 	}
 	if blkdev.Interface == "" {
-		return fmt.Errorf("BlockDevice missing Interface")
+		return fmt.Errorf("BlockDevice ID=%s missing Interface", blkdev.ID)
 	}
 	if blkdev.Format == "" {
-		return fmt.Errorf("BlockDevice missing Format")
+		return fmt.Errorf("BlockDevice ID=%s missing Format", blkdev.ID)
 	}
 	if blkdev.RotationRate > 0 && strings.HasPrefix(string(blkdev.Driver), "virtio") {
-		return fmt.Errorf("BlockDevice with RotationRate cannot be Driver=virtio*")
+		return fmt.Errorf("BlockDevice ID=%s with RotationRate cannot be Driver=virtio*", blkdev.ID)
 	}
 
 	return nil

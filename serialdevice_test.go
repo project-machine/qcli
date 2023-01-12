@@ -5,6 +5,7 @@ import "testing"
 var (
 	deviceLegacySerialMonMuxString = "-serial mon:stdio"
 	deviceLegacySerialString       = "-serial chardev:serial0"
+	deviceLegacySerialSocketString = "-serial unix:/tmp/serial.sock,server=on,wait=off"
 	deviceSerialString             = "-device virtio-serial-pci,disable-modern=true,id=serial0,romfile=efi-virtio.rom,max_ports=2"
 	deviceVirtioSerialPortString   = "-device virtserialport,chardev=char0,id=channel0,name=channel.0 -chardev socket,id=char0,path=/tmp/char.sock,server=on,wait=off"
 )
@@ -23,6 +24,15 @@ func TestAppendLegacySerial(t *testing.T) {
 	}
 
 	testAppend(sdev, deviceLegacySerialString, t)
+}
+
+func TestAppendLegacySerialUnix(t *testing.T) {
+	mon := LegacySerialDevice{
+		Backend: Socket,
+		Path:    "/tmp/serial.sock",
+	}
+	testAppend(mon, deviceLegacySerialSocketString, t)
+
 }
 
 func TestAppendDeviceSerial(t *testing.T) {
