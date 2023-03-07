@@ -8,6 +8,7 @@ var (
 	deviceLegacySerialSocketString = "-serial unix:/tmp/serial.sock,server=on,wait=off"
 	deviceSerialString             = "-device virtio-serial-pci,disable-modern=true,id=serial0,romfile=efi-virtio.rom,max_ports=2"
 	deviceVirtioSerialPortString   = "-device virtserialport,chardev=char0,id=channel0,name=channel.0 -chardev socket,id=char0,path=/tmp/char.sock,server=on,wait=off"
+	deviceSpiceSerialPortString    = "-device virtserialport,chardev=spicechannel0,name=com.redhat.spice.0 -chardev spicevmc,id=spicechannel0,name=vdagent"
 )
 
 func TestAppendLegacySerialMonMux(t *testing.T) {

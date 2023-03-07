@@ -31,26 +31,31 @@ import (
 )
 
 // SCSIController represents a SCSI controller device.
-type SCSIController struct {
-	ID string
+type SCSIControllerDevice struct {
+	ID string `yaml:"id"`
 
 	// Bus on which the SCSI controller is attached, this is optional
-	Bus string
+	Bus string `yaml:"bus,omitempty"`
 
 	// Addr is the PCI address offset, this is optional
-	Addr string
+	Addr string `yaml:"addr,omitempty"`
 
 	// DisableModern prevents qemu from relying on fast MMIO.
-	DisableModern bool
+	DisableModern bool `yaml:"disable-modern,omitempty"`
 
 	// IOThread is the IO thread on which IO will be handled
-	IOThread string
+	IOThread string `yaml:"iothread,omitempty"`
+
+	// IOThread object tunables
+	IOThreadPoll   int `yaml:"iothread-poll,omitempty"`
+	IOThreadMaxNS  int `yaml:"iothread-max-ns,omitempty"`
+	IOThreadShrink int `yaml:"iothread-shrink,omitempty"`
 
 	// ROMFile specifies the ROM file being used for this device.
-	ROMFile string
+	ROMFile string `yaml:"romfile,omitempty"`
 
 	// DevNo identifies the ccw devices for s390x architecture
-	DevNo string
+	DevNo string `yaml:"devno,omitempty"`
 
 	// Transport is the virtio transport for this device.
 	Transport VirtioTransport
@@ -65,7 +70,7 @@ var SCSIControllerTransport = map[VirtioTransport]string{
 }
 
 // Valid returns true if the SCSIController structure is valid and complete.
-func (scsiCon SCSIController) Valid() error {
+func (scsiCon SCSIControllerDevice) Valid() error {
 	if scsiCon.ID == "" {
 		return fmt.Errorf("SCSIController has empty ID field")
 	}
@@ -73,23 +78,29 @@ func (scsiCon SCSIController) Valid() error {
 }
 
 // QemuParams returns the qemu parameters built out of this SCSIController device.
-func (scsiCon SCSIController) QemuParams(config *Config) []string {
+func (scsiCon SCSIControllerDevice) QemuParams(config *Config) []string {
 	var qemuParams []string
 	var deviceParams []string
+	var objectParams []string
 
 	driver := scsiCon.deviceName(config)
 	deviceParams = append(deviceParams, fmt.Sprintf("%s,id=%s", driver, scsiCon.ID))
-	if scsiCon.Bus != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", scsiCon.Bus))
-	}
-	if scsiCon.Addr != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("addr=%s", scsiCon.Addr))
+	addr := config.pciBusSlots.GetSlot(scsiCon.Addr)
+	if addr > 0 {
+		deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
+		bus := "pcie.0"
+		if scsiCon.Bus != "" {
+			bus = scsiCon.Bus
+		}
+		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", bus))
 	}
 	if s := scsiCon.Transport.disableModern(config, scsiCon.DisableModern); s != "" {
 		deviceParams = append(deviceParams, s)
 	}
 	if scsiCon.IOThread != "" {
 		deviceParams = append(deviceParams, fmt.Sprintf("iothread=%s", scsiCon.IOThread))
+		// FIXME, add in tuneables
+		objectParams = append(objectParams, fmt.Sprintf("iothread,poll-max-ns=32,id=%s", scsiCon.IOThread))
 	}
 	if scsiCon.Transport.isVirtioPCI(config) && scsiCon.ROMFile != "" {
 		deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", scsiCon.ROMFile))
@@ -104,13 +115,16 @@ func (scsiCon SCSIController) QemuParams(config *Config) []string {
 
 	qemuParams = append(qemuParams, "-device")
 	qemuParams = append(qemuParams, strings.Join(deviceParams, ","))
-
+	if len(objectParams) > 0 {
+		qemuParams = append(qemuParams, "-object")
+		qemuParams = append(qemuParams, strings.Join(objectParams, ","))
+	}
 	return qemuParams
 }
 
 // deviceName returns the QEMU device name for the current combination of
 // driver and transport.
-func (scsiCon SCSIController) deviceName(config *Config) string {
+func (scsiCon SCSIControllerDevice) deviceName(config *Config) string {
 	if scsiCon.Transport == "" {
 		scsiCon.Transport = scsiCon.Transport.defaultTransport(config)
 	}

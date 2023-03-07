@@ -45,7 +45,7 @@ func (u UEFIFirmwareDevice) QemuParams(config *Config) []string {
 // OVMF firmware files, callers will need to make a copy of the of the Vars
 // template file before using it in a running VM.
 func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error) {
-	var uefiDev *UEFIFirmwareDevice
+	uefiDev := UEFIFirmwareDevice{}
 
 	if useSecureBoot {
 		uefiDev.Code = SecCodePath
@@ -54,7 +54,7 @@ func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error
 		} else if PathExists(CentosSecVars) {
 			uefiDev.Vars = CentosSecVars
 		} else {
-			return uefiDev, fmt.Errorf("secureboot requested, but no secureboot OVMF variables found")
+			return &uefiDev, fmt.Errorf("secureboot requested, but no secureboot OVMF variables found")
 		}
 	} else {
 		if PathExists(UnSecCodePath) {
@@ -65,9 +65,9 @@ func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error
 		if PathExists(UnSecVarsPath) {
 			uefiDev.Vars = UnSecVarsPath
 		} else {
-			return uefiDev, fmt.Errorf("OMVF variables template missing: %s", UnSecVarsPath)
+			return &uefiDev, fmt.Errorf("OMVF variables template missing: %s", UnSecVarsPath)
 		}
 	}
 
-	return uefiDev, nil
+	return &uefiDev, nil
 }

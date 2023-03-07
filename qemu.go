@@ -234,21 +234,28 @@ type Config struct {
 	// Devices is a list of devices for qemu to create and drive.
 	devices []Device
 
-	RngDevices          []RngDevice          `yaml:"rng-devices"`
-	BlkDevices          []BlockDevice        `yaml:"blk-devices"`
-	NetDevices          []NetDevice          `yaml:"net-devices"`
-	CharDevices         []CharDevice         `yaml:"char-devices"`
-	LegacySerialDevices []LegacySerialDevice `yaml:"legacy-serial-devices"`
-	SerialDevices       []SerialDevice       `yaml:"serial-devices"`
-	MonitorDevices      []MonitorDevice      `yaml:"monitor-devices"`
-	PCIeRootPortDevices []PCIeRootPortDevice `yaml:"pcie-root-port-devices"`
-	UEFIFirmwareDevices []UEFIFirmwareDevice `yaml:"uefi-firmware-devices"`
+	RngDevices            []RngDevice            `yaml:"rng-devices"`
+	BlkDevices            []BlockDevice          `yaml:"blk-devices"`
+	NetDevices            []NetDevice            `yaml:"net-devices"`
+	CharDevices           []CharDevice           `yaml:"char-devices"`
+	LegacySerialDevices   []LegacySerialDevice   `yaml:"legacy-serial-devices"`
+	SerialDevices         []SerialDevice         `yaml:"serial-devices"`
+	MonitorDevices        []MonitorDevice        `yaml:"monitor-devices"`
+	PCIeRootPortDevices   []PCIeRootPortDevice   `yaml:"pcie-root-port-devices"`
+	UEFIFirmwareDevices   []UEFIFirmwareDevice   `yaml:"uefi-firmware-devices"`
+	SCSIControllerDevices []SCSIControllerDevice `yaml:"scsi-controller-devices"`
 
 	// RTC is the qemu Real Time Clock configuration
 	RTC RTC `yaml:"real-time-clock"`
 
 	// VGA is the qemu VGA mode.
 	VGA string `yaml:"vga-mode"`
+
+	// SpiceDevice is the qemu spice protocol device for remote display
+	SpiceDevice SpiceDevice `yaml:"spice"`
+
+	// TPMDevice is a QEMU TPM device for guest OS use
+	TPM TPMDevice `yaml:"tpm"`
 
 	// Kernel is the guest kernel configuration.
 	Kernel Kernel `yaml:"kernel"`
@@ -289,6 +296,8 @@ type Config struct {
 	LogFile string `yaml:"log-file"`
 
 	// SM-BIOS Info TBD
+
+	pciBusSlots PCIBus
 
 	qemuParams []string
 }
@@ -433,6 +442,18 @@ func (config *Config) appendVGA() {
 	if config.VGA != "" {
 		config.qemuParams = append(config.qemuParams, "-vga")
 		config.qemuParams = append(config.qemuParams, config.VGA)
+	}
+}
+
+func (config *Config) appendSpice() {
+	if config.SpiceDevice.Port != "" || config.SpiceDevice.TLSPort != "" {
+		config.devices = append(config.devices, config.SpiceDevice)
+	}
+}
+
+func (config *Config) appendTPM() {
+	if config.TPM.ID != "" {
+		config.devices = append(config.devices, config.TPM)
 	}
 }
 
@@ -613,7 +634,6 @@ func GetSocketPaths(config *Config) ([]string, error) {
 
 func ConfigureParams(config *Config, logger QMPLog) ([]string, error) {
 	var err error
-	fmt.Printf("Configuring parameters...\n")
 	if logger == nil {
 		logger = qmpNullLogger{}
 	}
@@ -621,6 +641,8 @@ func ConfigureParams(config *Config, logger QMPLog) ([]string, error) {
 	config.appendUUID()
 	config.appendMachine()
 	config.appendCPUModel()
+	config.appendSpice()
+	config.appendTPM()
 	err = config.appendQMPSockets()
 	if err != nil {
 		return []string{}, err
