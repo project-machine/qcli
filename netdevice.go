@@ -389,8 +389,11 @@ func (netdev NetDevice) QemuDeviceParams(config *Config) []string {
 			deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
 		}
 	}
-	if s := netdev.Transport.disableModern(config, netdev.DisableModern); s != "" {
-		deviceParams = append(deviceParams, s)
+
+	if strings.HasPrefix(string(driver), "virtio") {
+		if s := netdev.Transport.disableModern(config, netdev.DisableModern); s != "" {
+			deviceParams = append(deviceParams, s)
+		}
 	}
 
 	if len(netdev.FDs) > 0 {

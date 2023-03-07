@@ -689,8 +689,10 @@ func TestBadCPUs(t *testing.T) {
 }
 
 var (
-	fullUefiVM = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x4,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x4.0x1 -drive if=pflash,format=raw,readonly,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=uefi_nvram.fd -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
-	fullBiosVM = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x4,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x4.0x1 -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
+	fullUefiVM      = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x5,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x5.0x1 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,addr=0x04,bus=pcie.0,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -drive if=pflash,format=raw,readonly,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=uefi_nvram.fd -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
+	fullBiosVM      = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x5,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x5.0x1 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,addr=0x04,bus=pcie.0,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
+	fullUefiVMSpice = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -spice port=5901,addr=127.0.0.1 -device virtio-serial-pci -device virtserialport,chardev=spicechannel0,name=com.redhat.spice.0 -chardev spicevmc,id=spicechannel0,name=vdagent -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x5,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x5.0x1 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,addr=0x04,bus=pcie.0,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -drive if=pflash,format=raw,readonly,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=uefi_nvram.fd -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
+	fullUefiVMTPM   = "-machine q35,accel=kvm,smm=on -cpu qemu64,+x2apic -m 4096 -chardev socket,id=chrtpm0,path=tpm.socket -tpmdev emulator,id=tpm0,chardev=chrtpm0 -device tpm-tis,tpmdev=tpm0 -device pcie-root-port,id=root-port.0x4.0,bus=pcie.0,chassis=0x0,slot=0x00,port=0x0,addr=0x5,multifunction=on -device pcie-root-port,id=root-port.0x4.1,bus=pcie.0,chassis=0x1,slot=0x00,port=0x1,addr=0x5.0x1 -object rng-random,id=rng0,filename=/dev/urandom -device virtio-rng-pci,rng=rng0,bus=pcie.0,addr=0x03 -drive file=boot.qcow2,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device virtio-blk-pci,drive=drive0,serial=ssd-boot,bootindex=0,disable-modern=true,addr=0x04,bus=pcie.0,logical_block_size=512,physical_block_size=512,scsi=off,config-wce=off -netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,bus=pcie.0,disable-modern=false -chardev socket,id=serial0,path=/tmp/console.sock,server=on,wait=off -chardev socket,id=monitor0,path=/tmp/monitor.sock,server=on,wait=off -serial chardev:serial0 -monitor chardev:monitor0 -drive if=pflash,format=raw,readonly,file=/usr/share/OVMF/OVMF_CODE.fd -drive if=pflash,format=raw,file=uefi_nvram.fd -global ICH9-LPC.disable_s3=1 -global driver=cfi.pflash01,property=secure,value=on -object memory-backend-file,id=dimm1,size=4096,mem-path=/dev/hugepages,share=on,prealloc=on -numa node,memdev=dimm1 -nographic -no-hpet -snapshot -smp 4"
 )
 
 func fullVMConfig() *Config {
@@ -710,9 +712,9 @@ func fullVMConfig() *Config {
 				Driver:    VirtioRng,
 				ID:        "rng0",
 				Bus:       "pcie.0",
-				Addr:      "3",
 				Transport: TransportPCI,
 				Filename:  RngDevUrandom,
+				Addr:      "3",
 			},
 		},
 		BlkDevices: []BlockDevice{
@@ -720,6 +722,7 @@ func fullVMConfig() *Config {
 				Driver:        VirtioBlock,
 				ID:            "drive0",
 				File:          "boot.qcow2",
+				BusAddr:       "4",
 				AIO:           Threads,
 				Format:        QCOW2,
 				Interface:     NoInterface,
@@ -780,7 +783,7 @@ func fullVMConfig() *Config {
 				Chassis:       "0x0",
 				Slot:          "0x00",
 				Port:          "0x0",
-				Addr:          "0x4",
+				Addr:          "0x5",
 				Multifunction: true,
 			},
 			PCIeRootPortDevice{
@@ -789,7 +792,7 @@ func fullVMConfig() *Config {
 				Chassis:       "0x1",
 				Slot:          "0x00",
 				Port:          "0x1",
-				Addr:          "0x4.0x1",
+				Addr:          "0x5.0x1",
 				Multifunction: false,
 			},
 		},
@@ -823,6 +826,55 @@ func TestFullUEFIMachineCommand(t *testing.T) {
 	c.UEFIFirmwareDevices = append(c.UEFIFirmwareDevices, u)
 
 	expected := fullUefiVM
+	qemuParams, err := ConfigureParams(c, nil)
+	if err != nil {
+		t.Fatalf("Failed to Configure parameters, error: %s", err.Error())
+	}
+	result := strings.Join(qemuParams, " ")
+	if expected != result {
+		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\nfound    [%s]", expected, result)
+	}
+}
+
+func TestFullUEFISpiceMachineCommand(t *testing.T) {
+	c := fullVMConfig()
+
+	u := UEFIFirmwareDevice{
+		Code: "/usr/share/OVMF/OVMF_CODE.fd",
+		Vars: "uefi_nvram.fd",
+	}
+	c.UEFIFirmwareDevices = append(c.UEFIFirmwareDevices, u)
+
+	c.SpiceDevice = SpiceDevice{Port: "5901"}
+
+	expected := fullUefiVMSpice
+	qemuParams, err := ConfigureParams(c, nil)
+	if err != nil {
+		t.Fatalf("Failed to Configure parameters, error: %s", err.Error())
+	}
+	result := strings.Join(qemuParams, " ")
+	if expected != result {
+		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\nfound    [%s]", expected, result)
+	}
+}
+
+func TestFullUEFITPMMachineCommand(t *testing.T) {
+	c := fullVMConfig()
+
+	u := UEFIFirmwareDevice{
+		Code: "/usr/share/OVMF/OVMF_CODE.fd",
+		Vars: "uefi_nvram.fd",
+	}
+	c.UEFIFirmwareDevices = append(c.UEFIFirmwareDevices, u)
+
+	c.TPM = TPMDevice{
+		ID:     "tpm0",
+		Driver: TPMTISDevice,
+		Path:   "tpm.socket",
+		Type:   TPMEmulatorDevice,
+	}
+
+	expected := fullUefiVMTPM
 	qemuParams, err := ConfigureParams(c, nil)
 	if err != nil {
 		t.Fatalf("Failed to Configure parameters, error: %s", err.Error())

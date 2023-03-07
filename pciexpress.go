@@ -27,8 +27,82 @@ package qcli
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
+
+	log "github.com/sirupsen/logrus"
 )
+
+// 32 slots available, place auto-created devices
+// starting at the end and decrement as needed
+// to avoid impacting
+const PCISlotMax int = 31
+
+// slot 0, 1, and 2 are always taken
+const PCISlotOffset = 3
+
+type PCIBus [PCISlotMax]bool
+
+func (bus *PCIBus) SetSlot(slot int) error {
+	if slot > PCISlotMax {
+		return fmt.Errorf("Slot %d must be < %d", slot, PCISlotMax)
+	}
+	bus[slot] = true
+	log.Debugf("PCIBus: allocated slot %s", fmt.Sprintf("0x%02x", slot))
+	return nil
+}
+
+func (bus *PCIBus) GetSlot(busAddr string) int {
+	// see if supplised busAddr string is set, if so use that
+	if busAddr != "" {
+		slot, _ := parseBusAddrString(busAddr)
+		if slot > 0 {
+			status := bus[slot]
+			if !status {
+				if err := bus.SetSlot(slot); err != nil {
+					log.Debugf("Could not set PCI Bus slot: %v", err)
+				}
+				return slot
+			}
+		}
+	}
+	// should we error or allocate an open slot?
+
+	// start from the top end of PCI range and descend to PCI offset to avoid
+	// using typically assigned pci slots
+	for slot := PCISlotMax - 1; slot > PCISlotOffset; slot-- {
+		status := bus[slot]
+		if !status {
+			if err := bus.SetSlot(slot); err != nil {
+				log.Debugf("Could not set PCI Bus slot: %v", err)
+			}
+			return slot
+		}
+	}
+	log.Errorf("PCIBus(%v) No PCI slots remaining", bus)
+	return -1
+}
+
+func parseBusAddrString(addr string) (int, error) {
+	addrString := addr
+
+	// someone tossed a pcie.0/1  or something
+	if strings.Contains(addr, "/") {
+		toks := strings.Split(addr, "/")
+		addrString = toks[1]
+	}
+
+	// if someone already makes it hex (0x12)
+	addrString = strings.Replace(addrString, "0x", "", -1)
+	addrString = strings.Replace(addrString, "0X", "", -1)
+
+	addrInt, err := strconv.Atoi(addr)
+	if err != nil {
+		return -1, err
+	}
+
+	return addrInt, nil
+}
 
 // PCIeRootPortDevice represents a memory balloon device.
 type PCIeRootPortDevice struct {

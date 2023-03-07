@@ -27,7 +27,6 @@ package qcli
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 )
 
@@ -104,11 +103,10 @@ func (r RngDevice) QemuParams(config *Config) []string {
 		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", r.Bus))
 	}
 
-	if r.Addr != "" {
-		addr, err := strconv.Atoi(r.Addr)
-		if err == nil && addr >= 0 {
-			deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
-		}
+	// virtio can have a BusAddr since they are pci devices
+	addr := config.pciBusSlots.GetSlot(r.Addr)
+	if addr > 0 {
+		deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
 	}
 
 	if r.Transport.isVirtioPCI(config) && r.ROMFile != "" {

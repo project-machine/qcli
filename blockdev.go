@@ -113,6 +113,8 @@ type BlockDevice struct {
 	// BusAddr is the bus address for some block devices (virtio-blk-pci)
 	BusAddr string `yaml:"busaddr"`
 
+	Bus string `yaml:"bus"`
+
 	// Serial is the 21-character disk serial value
 	Serial string `yaml:"serial"`
 
@@ -207,6 +209,10 @@ func (blkdev BlockDevice) QemuParams(config *Config) []string {
 		driveParams = append(driveParams, fmt.Sprintf("detect-zeroes=%s", blkdev.DetectZeroes))
 	}
 
+	if blkdev.Media != "" {
+		driveParams = append(driveParams, fmt.Sprintf("media=%s", blkdev.Media))
+	}
+
 	if blkdev.ReadOnly {
 		driveParams = append(driveParams, "readonly=on")
 	}
@@ -228,12 +234,35 @@ func (blkdev BlockDevice) QemuParams(config *Config) []string {
 		deviceParams = append(deviceParams, fmt.Sprintf("serial=%s", blkdev.ID))
 	}
 
-	// FIXME: handle if vrtio and BusAddr is set, append addr= to deviceParams
-
 	deviceParams = append(deviceParams, fmt.Sprintf("bootindex=%d", blkdev.BootIndex))
 
-	if s := blkdev.Transport.disableModern(config, blkdev.DisableModern); s != "" {
-		deviceParams = append(deviceParams, s)
+	if blkdev.Driver == VirtioBlock {
+		if s := blkdev.Transport.disableModern(config, blkdev.DisableModern); s != "" {
+			deviceParams = append(deviceParams, s)
+		}
+
+		// virtio can have a BusAddr since they are pci devices
+		addr := config.pciBusSlots.GetSlot(blkdev.BusAddr)
+		if addr > 0 {
+			deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
+			bus := "pcie.0"
+			if blkdev.Bus != "" {
+				bus = blkdev.Bus
+			}
+			deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", bus))
+		}
+	}
+
+	if blkdev.Driver == SCSIHD && blkdev.Bus != "" {
+		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", blkdev.Bus))
+	}
+
+	if blkdev.Driver == IDECDROM {
+		bus := "ide.0"
+		if blkdev.Bus != "" {
+			bus = blkdev.Bus
+		}
+		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", bus))
 	}
 
 	if blkdev.RotationRate > 0 && !strings.HasPrefix(string(blkdev.Driver), "virtio") {
@@ -245,11 +274,11 @@ func (blkdev BlockDevice) QemuParams(config *Config) []string {
 		deviceParams = append(deviceParams, fmt.Sprintf("physical_block_size=%d", blkdev.BlockSize))
 	}
 
-	if !blkdev.SCSI {
+	if !blkdev.SCSI && blkdev.Driver != IDECDROM {
 		deviceParams = append(deviceParams, "scsi=off")
 	}
 
-	if !blkdev.WCE {
+	if !blkdev.WCE && blkdev.Driver == VirtioBlock {
 		deviceParams = append(deviceParams, "config-wce=off")
 	}
 

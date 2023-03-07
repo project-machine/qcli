@@ -57,6 +57,9 @@ const (
 
 	// Stdio creates a 2 way connection to guest via stdio
 	Stdio CharDeviceBackend = "stdio"
+
+	// SpiceVMC creates a spice-protocol char device over a virtserialport
+	SpiceVMC CharDeviceBackend = "spicevmc"
 )
 
 // CharDevice represents a qemu character device.
