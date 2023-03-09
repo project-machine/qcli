@@ -189,6 +189,10 @@ func (config *Config) appendDevices() error {
 			for _, d := range config.SCSIControllerDevices {
 				config.devices = append(config.devices, d)
 			}
+		case "IDEControllerDevices": // controllers have to be before blkdev
+			for _, d := range config.IDEControllerDevices {
+				config.devices = append(config.devices, d)
+			}
 		}
 	}
 

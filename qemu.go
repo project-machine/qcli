@@ -244,6 +244,7 @@ type Config struct {
 	PCIeRootPortDevices   []PCIeRootPortDevice   `yaml:"pcie-root-port-devices"`
 	UEFIFirmwareDevices   []UEFIFirmwareDevice   `yaml:"uefi-firmware-devices"`
 	SCSIControllerDevices []SCSIControllerDevice `yaml:"scsi-controller-devices"`
+	IDEControllerDevices  []IDEControllerDevice  `yaml:"ide-controller-devices"`
 
 	// RTC is the qemu Real Time Clock configuration
 	RTC RTC `yaml:"real-time-clock"`
