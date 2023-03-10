@@ -90,3 +90,9 @@ func (qti QemuTypeIndex) NextNetIndex() int {
 func (qti QemuTypeIndex) SetNetIndex(index int) error {
 	return qti.Set("net", index)
 }
+
+func ValuePtr(index int) *int {
+	val := new(int)
+	*val = index
+	return val
+}
