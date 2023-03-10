@@ -99,7 +99,7 @@ type BlockDevice struct {
 	Format    BlockDeviceFormat    `yaml:"format"`
 	SCSI      bool                 `yaml:"scsi"`
 	WCE       bool                 `yaml:"write-cache"`
-	BootIndex int                  `yaml:"bootindex"`
+	BootIndex *int                 `yaml:"bootindex"`
 
 	// Media is a hint about the what type of content on the disk, e.g media=cdrom
 	Media string `yaml:"media"`
@@ -234,7 +234,9 @@ func (blkdev BlockDevice) QemuParams(config *Config) []string {
 		deviceParams = append(deviceParams, fmt.Sprintf("serial=%s", blkdev.ID))
 	}
 
-	deviceParams = append(deviceParams, fmt.Sprintf("bootindex=%d", blkdev.BootIndex))
+	if blkdev.BootIndex != nil {
+		deviceParams = append(deviceParams, fmt.Sprintf("bootindex=%d", *blkdev.BootIndex))
+	}
 
 	if blkdev.Driver == VirtioBlock {
 		if s := blkdev.Transport.disableModern(config, blkdev.DisableModern); s != "" {
