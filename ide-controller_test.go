@@ -52,7 +52,7 @@ func TestAppendDeviceIDEControllerAndIDECDROM(t *testing.T) {
 				Format:    RAW,
 				ReadOnly:  true,
 				Media:     "cdrom",
-				BootIndex: ValuePtr(0),
+				BootIndex: "0",
 				Bus:       "ide.0",
 			},
 		},

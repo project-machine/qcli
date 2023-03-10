@@ -732,7 +732,7 @@ func fullVMConfig() *Config {
 				Cache:         CacheModeUnsafe,
 				Discard:       DiscardUnmap,
 				DetectZeroes:  DetectZeroesUnmap,
-				BootIndex:     ValuePtr(0),
+				BootIndex:     "0",
 			},
 		},
 		NetDevices: []NetDevice{

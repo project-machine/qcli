@@ -298,7 +298,7 @@ type NetDevice struct {
 	McastSocket NetDeviceMcastSocket `yaml:"mcast-socket"`
 
 	// bootindex
-	BootIndex int `yaml:"bootindex"`
+	BootIndex string `yaml:"bootindex"`
 }
 
 // VirtioNetTransport is a map of the virtio-net device name that corresponds
@@ -388,6 +388,10 @@ func (netdev NetDevice) QemuDeviceParams(config *Config) []string {
 		if err == nil && addr >= 0 {
 			deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
 		}
+	}
+
+	if netdev.BootIndex != "" {
+		deviceParams = append(deviceParams, fmt.Sprintf("bootindex=%s", netdev.BootIndex))
 	}
 
 	if strings.HasPrefix(string(driver), "virtio") {

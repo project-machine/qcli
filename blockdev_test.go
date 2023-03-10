@@ -66,7 +66,7 @@ func TestAppendDeviceBlockVirtioCDROM(t *testing.T) {
 		Format:    RAW,
 		ReadOnly:  true,
 		Media:     "cdrom",
-		BootIndex: ValuePtr(0),
+		BootIndex: "0",
 	}
 	if blkdev.Transport.isVirtioCCW(nil) {
 		blkdev.DevNo = DevNo
@@ -85,7 +85,7 @@ func TestAppendDeviceBlockIDECDROM(t *testing.T) {
 		Format:    RAW,
 		ReadOnly:  true,
 		Media:     "cdrom",
-		BootIndex: ValuePtr(0),
+		BootIndex: "0",
 		Bus:       "ide.0",
 	}
 	if blkdev.Transport.isVirtioCCW(nil) {
@@ -104,7 +104,7 @@ func TestAppendDeviceBlockSCSIHD(t *testing.T) {
 		Serial:       "root-disk",
 		File:         "root-disk.qcow",
 		Format:       QCOW2,
-		BootIndex:    ValuePtr(1),
+		BootIndex:    "1",
 		Bus:          "scsi0.0",
 		Cache:        CacheModeUnsafe,
 		Discard:      DiscardUnmap,

@@ -88,7 +88,7 @@ func getFullConfig() qcli.Config {
 				Cache:         qcli.CacheModeUnsafe,
 				Discard:       qcli.DiscardUnmap,
 				DetectZeroes:  qcli.DetectZeroesUnmap,
-				BootIndex:     0,
+				BootIndex:     "0",
 			},
 		},
 		NetDevices: []qcli.NetDevice{
