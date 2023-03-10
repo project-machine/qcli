@@ -19,7 +19,7 @@ type QemuDisk struct {
 	Type      string `yaml:"type"`
 	BlockSize int    `yaml:"blocksize"`
 	BusAddr   string `yaml:"addr"`
-	BootIndex *int   `yaml:"bootindex"`
+	BootIndex string `yaml:"bootindex"`
 	ReadOnly  bool   `yaml:"read-only"`
 	Serial    string `yaml:"serial"`
 }
@@ -98,7 +98,7 @@ type NicDef struct {
 	ID        string     `yaml:"id"`
 	Mac       string     `yaml:"mac"`
 	Ports     []PortRule `yaml:"ports"`
-	BootIndex *int       `yaml:"bootindex"`
+	BootIndex string     `yaml:"bootindex"`
 }
 
 type VMNic struct {
@@ -110,7 +110,7 @@ type VMNic struct {
 	NetIFName  string
 	NetType    string
 	NetAddr    string
-	BootIndex  *int
+	BootIndex  string
 	Ports      []PortRule
 }
 
