@@ -228,6 +228,9 @@ type Config struct {
 	// Machine
 	Machine Machine `yaml:"machine"`
 
+	// SMBIOS
+	SMBIOS SMBIOSInfo `yaml:"smbios"`
+
 	// QMPSockets is a slice of QMP socket description.
 	QMPSockets []QMPSocket `yaml:"qmp-sockets"`
 
@@ -645,6 +648,9 @@ func ConfigureParams(config *Config, logger QMPLog) ([]string, error) {
 	config.appendCPUModel()
 	config.appendSpice()
 	config.appendTPM()
+	if err := config.appendSMBIOSInfo(); err != nil {
+		return []string{}, err
+	}
 	err = config.appendQMPSockets()
 	if err != nil {
 		return []string{}, err

@@ -65,6 +65,16 @@ func testConfigAppend(config *Config, structure interface{}, expected string, t 
 		objParams := s.QemuParams(config)
 		config.qemuParams = append(config.qemuParams, objParams...)
 
+	case TPMDevice:
+		config.TPM = s
+		config.appendTPM()
+
+	case SMBIOSInfo:
+		config.SMBIOS = s
+		if err := config.appendSMBIOSInfo(); err != nil {
+			t.Fatalf("Failed ot append SMBIOS '%v', error: %s", s, err)
+		}
+
 	case Knobs:
 		config.Knobs = s
 		config.appendKnobs()
