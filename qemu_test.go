@@ -754,10 +754,12 @@ func fullVMConfig() *Config {
 				Bus:        "pcie.0",
 				User: NetDeviceUser{
 					IPV4: true,
-					HostForward: PortRule{
-						Protocol: "tcp",
-						Host:     Port{Port: 22222},
-						Guest:    Port{Port: 22},
+					HostForward: []PortRule{
+						PortRule{
+							Protocol: "tcp",
+							Host:     Port{Port: 22222},
+							Guest:    Port{Port: 22},
+						},
 					},
 				},
 			},
