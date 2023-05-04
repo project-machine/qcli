@@ -234,9 +234,9 @@ const EmptyPortRule = "::0-:0"
 
 // -netdev user,
 type NetDeviceUser struct {
-	IPV4        bool     `yaml:"ipv4-enable"`
-	IPV4NetAddr string   `yaml:"ipv4-network-address"`
-	HostForward PortRule `yaml:"host-port-rule"`
+	IPV4        bool       `yaml:"ipv4-enable"`
+	IPV4NetAddr string     `yaml:"ipv4-network-address"`
+	HostForward []PortRule `yaml:"host-port-rules"`
 }
 
 // -netdev socket,listen=
@@ -471,9 +471,11 @@ func (netdev NetDevice) QemuNetdevParams(config *Config) []string {
 			netdevParams = append(netdevParams, "ipv4=off")
 		}
 
-		hostfwd := netdev.User.HostForward.String()
-		if hostfwd != EmptyPortRule {
-			netdevParams = append(netdevParams, fmt.Sprintf("hostfwd=%s", hostfwd))
+		for _, rule := range netdev.User.HostForward {
+			hostfwd := rule.String()
+			if hostfwd != EmptyPortRule {
+				netdevParams = append(netdevParams, fmt.Sprintf("hostfwd=%s", hostfwd))
+			}
 		}
 
 		if netdev.User.IPV4NetAddr != "" {
