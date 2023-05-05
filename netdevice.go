@@ -60,6 +60,8 @@ const (
 
 	// VHOSTUSER is a vhost-user port (socket)
 	VHOSTUSER NetDeviceType = "vhostuser"
+
+	DisabledNetDeviceROMFile = "off"
 )
 
 // QemuNetdevParam converts to the QEMU -netdev parameter notation
@@ -406,7 +408,12 @@ func (netdev NetDevice) QemuDeviceParams(config *Config) []string {
 	}
 
 	if netdev.Transport.isVirtioPCI(config) && netdev.ROMFile != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", netdev.ROMFile))
+		// allow setting romfile= to disable the built-in romfile for the nic
+		romfile := netdev.ROMFile
+		if romfile == DisabledNetDeviceROMFile {
+			romfile = ""
+		}
+		deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", romfile))
 	}
 
 	if netdev.Transport.isVirtioCCW(config) {
