@@ -11,7 +11,7 @@ var (
 	deviceNetworkPCIStringLowAddr  = "-netdev tap,id=tap0,vhost=on,ifname=ceth0,downscript=no,script=no -device virtio-net-pci,netdev=tap0,mac=01:02:de:ad:be:ef,bus=/pci-bus/pcie.0,addr=0x03,disable-modern=true,romfile=efi-virtio.rom"
 	deviceNetworkPCIStringMq       = "-netdev tap,id=tap0,vhost=on,fds=3:4 -device virtio-net-pci,netdev=tap0,mac=01:02:de:ad:be:ef,bus=/pci-bus/pcie.0,addr=0xff,disable-modern=true,mq=on,vectors=6,romfile=efi-virtio.rom"
 	deviceNetworkString            = "-netdev tap,id=tap0,vhost=on,ifname=ceth0,downscript=no,script=no -device virtio-net-pci,netdev=tap0,mac=01:02:de:ad:be:ef,disable-modern=true,romfile=efi-virtio.rom"
-	deviceNetworkUserString        = "-netdev user,id=user0,ipv4=on,net=10.0.2.15/24 -device e1000,netdev=user0,mac=01:02:de:ad:be:ef"
+	deviceNetworkUserString        = "-netdev user,id=user0,ipv4=on,net=10.0.2.15/24 -device e1000,netdev=user0,mac=01:02:de:ad:be:ef,romfile="
 	deviceNetworkUserHostFwdString = "-netdev user,id=user0,ipv4=on,hostfwd=tcp::22222-:22,hostfwd=tcp::8080-:80 -device virtio-net-pci,netdev=user0,mac=01:02:de:ad:be:ef,disable-modern=false"
 	deviceNetworkMcastSocketString = "-netdev socket,id=sock0,mcast=230.0.0.1:1234 -device virtio-net-pci,netdev=sock0,mac=01:02:de:ad:be:ef,disable-modern=true"
 	deviceNetworkTapMqString       = "-netdev tap,id=tap0,vhost=on,fds=3:4 -device virtio-net-pci,netdev=tap0,mac=01:02:de:ad:be:ef,disable-modern=true,mq=on,vectors=6,romfile=efi-virtio.rom"
@@ -46,6 +46,7 @@ func TestAppendDeviceNetworkUser(t *testing.T) {
 		Type:       USER,
 		ID:         "user0",
 		MACAddress: "01:02:de:ad:be:ef",
+		ROMFile:    DisabledNetDeviceROMFile,
 		User: NetDeviceUser{
 			IPV4:        true,
 			IPV4NetAddr: "10.0.2.15/24",
