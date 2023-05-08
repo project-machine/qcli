@@ -1,6 +1,7 @@
 package qcli
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 )
@@ -29,6 +30,13 @@ func TestAppendUEFIFirmwareDevice(t *testing.T) {
 	expected := "-drive if=pflash,format=raw,readonly,file=OVMF_CODE.fd -drive if=pflash,format=raw,file=OVMF_VARS.fd"
 
 	testAppend(udev, expected, t)
+}
+
+/* interacts with host system, disabled */
+func TestAppendNewUEFIFirmwareDevice(t *testing.T) {
+	udev, _ := NewSystemUEFIFirmwareDevice(true)
+	expected := fmt.Sprintf("-drive if=pflash,format=raw,readonly,file=%s -drive if=pflash,format=raw,file=%s", udev.Code, udev.Vars)
+	testAppend(*udev, expected, t)
 }
 
 func TestAppendUEFIFirmwareDeviceConfig(t *testing.T) {
