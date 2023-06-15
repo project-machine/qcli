@@ -37,6 +37,13 @@ func TestAppendMachine(t *testing.T) {
 		SMM:          "on",
 	}
 	testAppend(machine, machineString, t)
+
+	machineString = "-machine virt,accel=kvm"
+	machine = Machine {
+		Type:			MachineTypeVirt,
+		Acceleration:	MachineAccelerationKVM,
+	}
+	testAppend(machine, machineString, t)
 }
 
 func TestAppendEmptyMachine(t *testing.T) {

@@ -2,6 +2,7 @@ package qcli
 
 import (
 	"fmt"
+	"runtime"
 )
 
 type UEFIFirmwareDevice struct {
@@ -16,6 +17,11 @@ const (
 	CentosSecVars    = "/usr/share/OVMF/OVMF_VARS.secboot.fd"
 	UnSecCodePath    = "/usr/share/OVMF/OVMF_CODE.fd"
 	UnSecVarsPath    = "/usr/share/OVMF/OVMF_VARS.fd"
+	UEFISecVarsFileNameArm = "flash-vars-sec.img"
+	SecCodePathArm      = "/usr/share/AAVMF/AAVMF.ms.fd"
+	UbuntuSecVarsArm    = "/usr/share/AAVMF/AAVMF_VARS.ms.fd"
+	UnSecCodePathArm    = "/usr/share/AAVMF/AAVMF_CODE.fd"
+	UnSecVarsPathArm    = "/usr/share/AAVMF/AAVMF_VARS.fd"
 )
 
 func (u UEFIFirmwareDevice) Valid() error {
@@ -32,7 +38,7 @@ func (u UEFIFirmwareDevice) QemuParams(config *Config) []string {
 	var qemuParams []string
 
 	if u.Code != "" {
-		qemuParams = append(qemuParams, "-drive", "if=pflash,format=raw,readonly,file="+u.Code)
+		qemuParams = append(qemuParams, "-drive", "if=pflash,format=raw,readonly=on,file="+u.Code)
 	}
 	if u.Vars != "" {
 		qemuParams = append(qemuParams, "-drive", "if=pflash,format=raw,file="+u.Vars)
@@ -46,28 +52,49 @@ func (u UEFIFirmwareDevice) QemuParams(config *Config) []string {
 // template file before using it in a running VM.
 func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error) {
 	uefiDev := UEFIFirmwareDevice{}
-
-	if useSecureBoot {
-		uefiDev.Code = SecCodePath
-		if PathExists(UbuntuSecVars) {
-			uefiDev.Vars = UbuntuSecVars
-		} else if PathExists(CentosSecVars) {
-			uefiDev.Vars = CentosSecVars
-		} else {
-			return &uefiDev, fmt.Errorf("secureboot requested, but no secureboot OVMF variables found")
-		}
-	} else {
-		if PathExists(UnSecCodePath) {
-			uefiDev.Code = UnSecCodePath
-		} else {
+	switch runtime.GOARCH {
+	case "s390x", "amd64":
+		if useSecureBoot {
 			uefiDev.Code = SecCodePath
-		}
-		if PathExists(UnSecVarsPath) {
-			uefiDev.Vars = UnSecVarsPath
+			if PathExists(UbuntuSecVars) {
+				uefiDev.Vars = UbuntuSecVars
+			} else if PathExists(CentosSecVars) {
+				uefiDev.Vars = CentosSecVars
+			} else {
+				return &uefiDev, fmt.Errorf("secureboot requested, but no secureboot OVMF variables found")
+			}
 		} else {
-			return &uefiDev, fmt.Errorf("OMVF variables template missing: %s", UnSecVarsPath)
+			if PathExists(UnSecCodePath) {
+				uefiDev.Code = UnSecCodePath
+			} else {
+				uefiDev.Code = SecCodePath
+			}
+			if PathExists(UnSecVarsPath) {
+				uefiDev.Vars = UnSecVarsPath
+			} else {
+				return &uefiDev, fmt.Errorf("OMVF variables template missing: %s", UnSecVarsPath)
+			}
+		}
+	case "arm64", "aarch64":
+		if useSecureBoot {
+			uefiDev.Code = SecCodePathArm
+			if PathExists(UbuntuSecVarsArm) {
+				uefiDev.Vars = UbuntuSecVarsArm
+			} else {
+				return &uefiDev, fmt.Errorf("secureboot requested, but no secureboot AAVMF variables found")
+			}
+		} else {
+			if PathExists(UnSecCodePathArm) {
+				uefiDev.Code = UnSecCodePathArm
+			} else {
+				uefiDev.Code = SecCodePathArm
+			}
+			if PathExists(UnSecVarsPathArm) {
+				uefiDev.Vars = UnSecVarsPathArm
+			} else {
+				return &uefiDev, fmt.Errorf("AAVMF variables template missing: %s", UnSecVarsPathArm)
+			}
 		}
 	}
-
 	return &uefiDev, nil
 }
