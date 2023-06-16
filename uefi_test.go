@@ -3,7 +3,7 @@ package qcli
 import (
 	"strings"
 	"testing"
-	"runtime"
+	//"runtime"
 )
 
 func TestUEFIFirmwareDeviceValid(t *testing.T) {
@@ -50,28 +50,28 @@ func TestAppendUEFIFirmwareDeviceConfig(t *testing.T) {
 		t.Fatalf("Failed to append parameters\nexpected[%s]\n!=\nfound   [%s]", expected, result)
 	}
 }
-
+/* Commented out because success/failure depends on local filesystem
 func TestNewFirmwareDev(t *testing.T) {
 	secureBoot := true
-	udev_ptr, err := NewSystemUEFIFirmwareDevice(secureBoot)
+	udev, err := NewSystemUEFIFirmwareDevice(secureBoot)
 	if err != nil {
 		t.Fatalf("Failed to find secure firmware blobs: %s", err)
 	}
-	udev := *udev_ptr
 	switch runtime.GOARCH{
 	case "amd64":
 		if PathExists(UbuntuSecVars) {
 			expected := "-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.secboot.fd -drive if=pflash,format=raw,file=/usr/share/OVMF/OVMF_VARS.ms.fd"
-			testAppend(udev, expected, t)
+			testAppend(*udev, expected, t)
 		} else if PathExists(CentosSecVars){
 			expected := "-drive if=pflash,format=raw,readonly=on,file=/usr/share/OVMF/OVMF_CODE.secboot.fd -drive if=pflash,format=raw,file=/usr/share/OVMF/OVMF_VARS.secboot.fd"
-			testAppend(udev, expected, t)
+			testAppend(*udev, expected, t)
 		} else {
 			t.Fatalf("Failed to find secure firmware blobs")
 		}
 	case "arm64", "aarch64":
 		expected := "-drive if=pflash,format=raw,readonly=on,file=/usr/share/AAVMF/AAVMF_CODE.ms.fd -drive if=pflash,format=raw,file=/usr/share/AAVMF/AAVMF_VARS.ms.fd"
-		testAppend(udev, expected, t)
+		testAppend(*udev, expected, t)
 	}
 }
+*/
 // TODO: add system tests to handle different distros

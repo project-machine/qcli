@@ -45,25 +45,14 @@ func (u UEFIFirmwareDevice) QemuParams(config *Config) []string {
 	return qemuParams
 }
 
-//Helper function to check and set CODE path for new UEFIFirmwareDevice
-func (uefiDev *UEFIFirmwareDevice) checkAndSetCodePaths(codePaths []string) (bool){
-	for _, cp := range codePaths {
-		if PathExists(cp) {
-			uefiDev.Code = cp
-			return true
-		}
-	}
-	return false
-}
-//Helper function to check and set VARS path for new UEFIFirmwareDevice
-func (uefiDev *UEFIFirmwareDevice) checkAndSetVarPaths(varPaths []string) (bool){
-	for _, vp := range varPaths {
-		if PathExists(vp) {
-			uefiDev.Vars = vp
-			return true
-		}
-	}
-	return false
+//Helper function to find paths (either code or vars firmware) for new UEFIFirmwareDevice
+func selectPath(paths []string) string {
+    for _, path := range paths {
+        if PathExists(path) {
+            return path
+        }
+    }
+    return ""
 }
 
 // NewSystemUEFIFirmwareDevice looks at the local system to collect expected
@@ -76,30 +65,32 @@ func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error
 	var SecVarPaths = []string{UbuntuSecVarsAarch64, UbuntuSecVarsAarch64}
 	var UnSecCodePaths = []string{UnSecCodePath, UnSecCodePathAarch64}
 	var UnSecVarPaths = []string{UnSecVarsPath, UnSecVarsPathAarch64}
-	var setCode bool
-	var setVars bool
 
 	if (useSecureBoot) {
-		setCode = uefiDev.checkAndSetCodePaths(SecCodePaths)
-		if (!setCode) {
-			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot CODE firmware file found")
+		secCode := selectPath(SecCodePaths)
+		if secCode == "" {
+			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot Code file found")
 		}
-		setVars = uefiDev.checkAndSetVarPaths(SecVarPaths)
-		if (!setVars) {
-			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot VARS firmware file found")
+		uefiDev.Code = secCode
+		secVars := selectPath(SecVarPaths)
+		if secVars == "" {
+			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot Vars file found")
 		}
+		uefiDev.Vars = secVars
 	} else {
-		setCode = uefiDev.checkAndSetCodePaths(UnSecCodePaths)
-		if (!setCode) {
-			setCode = uefiDev.checkAndSetCodePaths(SecCodePaths)
+		codePath := selectPath(UnSecCodePaths)
+		if codePath == "" {
+			codePath = selectPath(SecCodePaths)
 		}
-		if (!setCode) {
+		if codePath == "" {
 			return &uefiDev, fmt.Errorf("Failed to find UEFI code firmware")
 		}
-		setVars = uefiDev.checkAndSetVarPaths(UnSecVarPaths)
-		if (!setVars) {
-			return &uefiDev, fmt.Errorf("Failed to find UEFI Vars firmware")
+		uefiDev.Code = codePath
+		unsecVars := selectPath(UnSecVarPaths)
+		if unsecVars == "" {
+			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot Vars file found")
 		}
+		uefiDev.Vars = unsecVars
 	}
 	return &uefiDev, nil
 }

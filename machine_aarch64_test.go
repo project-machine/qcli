@@ -1,3 +1,5 @@
+// +build aarch64 arm64
+
 package qcli
 
 import "testing"
