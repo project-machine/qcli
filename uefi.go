@@ -16,7 +16,7 @@ const (
 	CentosSecVars    = "/usr/share/OVMF/OVMF_VARS.secboot.fd"
 	UnSecCodePath    = "/usr/share/OVMF/OVMF_CODE.fd"
 	UnSecVarsPath    = "/usr/share/OVMF/OVMF_VARS.fd"
-	SecCodePathAarch64      = "/usr/share/AAVMF/AAVM_CODE.ms.fd"
+	SecCodePathAarch64      = "/usr/share/AAVMF/AAVMF_CODE.ms.fd"
 	UbuntuSecVarsAarch64    = "/usr/share/AAVMF/AAVMF_VARS.ms.fd"
 	UnSecCodePathAarch64    = "/usr/share/AAVMF/AAVMF_CODE.fd"
 	UnSecVarsPathAarch64    = "/usr/share/AAVMF/AAVMF_VARS.fd"
@@ -61,8 +61,8 @@ func selectPath(paths []string) string {
 func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error) {
 	uefiDev := UEFIFirmwareDevice{}
 	//can add in more paths as necessary
-	var SecCodePaths = []string{SecCodePath, CentosSecVars, SecCodePathAarch64}
-	var SecVarPaths = []string{UbuntuSecVarsAarch64, UbuntuSecVarsAarch64}
+	var SecCodePaths = []string{SecCodePath, SecCodePathAarch64}
+	var SecVarPaths = []string{UbuntuSecVarsAarch64, CentosSecVars, UbuntuSecVarsAarch64}
 	var UnSecCodePaths = []string{UnSecCodePath, UnSecCodePathAarch64}
 	var UnSecVarPaths = []string{UnSecVarsPath, UnSecVarsPathAarch64}
 
