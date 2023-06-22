@@ -19,6 +19,7 @@ package qcli
 import (
 	"fmt"
 	"strings"
+	"runtime"
 )
 
 const (
@@ -90,5 +91,11 @@ func (tpm TPMDevice) QemuParams(config *Config) []string {
 }
 
 func (tpm TPMDevice) deviceName() string {
-	return string(tpm.Driver)
+	switch tpm.Driver {
+    case TPMTISDevice:
+          if runtime.GOARCH == "aarch64" || runtime.GOARCH == "arm64" {
+              return string(tpm.Driver + "-device")
+          }
+    }
+    return string(tpm.Driver)
 }

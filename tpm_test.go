@@ -17,6 +17,7 @@ limitations under the License.
 package qcli
 
 import "testing"
+import "runtime"
 
 var ValidTPM = TPMDevice{
 	ID:     "tpm0",
@@ -26,11 +27,16 @@ var ValidTPM = TPMDevice{
 }
 
 func TestTPMDevice(t *testing.T) {
+	chardevStr := "-chardev socket,id=chrtpm0,path=tpm.socket -tpmdev emulator,id=tpm0,chardev=chrtpm0 -device tpm-tis,tpmdev=tpm0"
+	if runtime.GOARCH == "aarch64" || runtime.GOARCH == "arm64" {
+		chardevStr = "-chardev socket,id=chrtpm0,path=tpm.socket -tpmdev emulator,id=tpm0,chardev=chrtpm0 -device tpm-tis-device,tpmdev=tpm0"
+	}
+		
 	testCases := []struct {
 		dev Device
 		out string
 	}{
-		{ValidTPM, "-chardev socket,id=chrtpm0,path=tpm.socket -tpmdev emulator,id=tpm0,chardev=chrtpm0 -device tpm-tis,tpmdev=tpm0"},
+		{ValidTPM, chardevStr},
 	}
 
 	for _, tc := range testCases {

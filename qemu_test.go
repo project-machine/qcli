@@ -22,6 +22,7 @@ import (
 	"sort"
 	"strings"
 	"testing"
+	"runtime"
 )
 
 const agentUUID = "4cb19522-1e18-439a-883a-f9b2a3a95f5e"
@@ -871,6 +872,10 @@ func TestFullUEFISpiceMachineCommand(t *testing.T) {
 }
 
 func TestFullUEFITPMMachineCommand(t *testing.T) {
+	//don't need to run test if we have aarch64 -- corresponding test can be found in qemu_aarch64_test.go
+	if runtime.GOARCH == "aarch64" || runtime.GOARCH == "arm64" {
+		return
+	}
 	c := fullVMConfig()
 
 	u := UEFIFirmwareDevice{

@@ -80,7 +80,7 @@ func TestFullUEFITPMCommandAarch64(t *testing.T) {
 
 	c.TPM = TPMDevice{
 		ID:     "tpm0",
-		Driver: TPMTISDeviceAarch64,
+		Driver: TPMTISDevice,
 		Path:   "tpm.sock",
 		Type:   TPMEmulatorDevice,
 	}
