@@ -69,7 +69,7 @@ func getFullConfig() qcli.Config {
 			qcli.BlockDevice{
 				Driver:    qcli.PFlash,
 				ID:        "pflash1",
-				File:      "uefi_nvram.fd",
+				File:      "uefi-nvram.fd",
 				Format:    qcli.RAW,
 				Interface: qcli.PFlashInterface,
 				DriveOnly: true,
