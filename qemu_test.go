@@ -834,7 +834,7 @@ func fullVMConfig() *Config {
 func fullVMConfigAarch64() *Config {
 	c := &Config{
 		Machine: Machine{
-			Type:         MachineTypeVirt,
+			Type:         MachineTypeVirtAarch64,
 			Acceleration: MachineAccelerationKVM,
 		},
 		CPUModel:      "host",

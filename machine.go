@@ -85,6 +85,7 @@ const (
 	MachineTypeMicrovm string = "microvm"
 	MachineTypePC35    string = "q35"
 	MachineTypePC      string = "pc"
+	MachineTypeVirtAarch64 string = "virt"
 
 	MachineAccelerationKVM string = "kvm"
 )
