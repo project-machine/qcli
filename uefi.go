@@ -10,7 +10,7 @@ type UEFIFirmwareDevice struct {
 }
 
 const (
-	UEFIVarsFileName = "uefi_nvram.fd"
+	UEFIVarsFileName = "uefi-nvram.fd"
 	SecCodePath      = "/usr/share/OVMF/OVMF_CODE.secboot.fd"
 	UbuntuSecVars    = "/usr/share/OVMF/OVMF_VARS.ms.fd"
 	CentosSecVars    = "/usr/share/OVMF/OVMF_VARS.secboot.fd"
