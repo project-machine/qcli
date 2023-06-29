@@ -2,6 +2,9 @@ package qcli
 
 import (
 	"fmt"
+	"path/filepath"
+	"runtime"
+	"strings"
 )
 
 type UEFIFirmwareDevice struct {
@@ -9,18 +12,32 @@ type UEFIFirmwareDevice struct {
 	Vars string `yaml:"uefi-vars"`
 }
 
+var VMFHostPrefix = "/usr/share"
+
 const (
 	UEFIVarsFileName = "uefi-nvram.fd"
-	SecCodePath      = "/usr/share/OVMF/OVMF_CODE.secboot.fd"
-	UbuntuSecVars    = "/usr/share/OVMF/OVMF_VARS.ms.fd"
-	CentosSecVars    = "/usr/share/OVMF/OVMF_VARS.secboot.fd"
-	UnSecCodePath    = "/usr/share/OVMF/OVMF_CODE.fd"
-	UnSecVarsPath    = "/usr/share/OVMF/OVMF_VARS.fd"
-	SecCodePathAarch64      = "/usr/share/AAVMF/AAVMF_CODE.ms.fd"
-	UbuntuSecVarsAarch64    = "/usr/share/AAVMF/AAVMF_VARS.ms.fd"
-	UnSecCodePathAarch64    = "/usr/share/AAVMF/AAVMF_CODE.fd"
-	UnSecVarsPathAarch64    = "/usr/share/AAVMF/AAVMF_VARS.fd"
+	VMFCode          = "VMF_CODE" // OVMF_CODE , AAVMF_CODE
+	VMFVars          = "VMF_VARS"
+	VMFMs            = ".ms"
+	VMFSecboot       = ".secboot"
+	VMF4MB           = "_4M"
+	VMFSuffix        = ".fd"
+	VMF32Bit         = "32"
 )
+
+func VMFPrefix() string {
+	switch runtime.GOARCH {
+	case "aarch64", "arm64":
+		return "AA"
+	case "amd64", "x86_64":
+		return "O"
+	}
+	return ""
+}
+
+func VMFPathBase() string {
+	return filepath.Join(VMFHostPrefix, VMFPrefix()+"VMF")
+}
 
 func (u UEFIFirmwareDevice) Valid() error {
 	if u.Code == "" {
@@ -45,52 +62,136 @@ func (u UEFIFirmwareDevice) QemuParams(config *Config) []string {
 	return qemuParams
 }
 
-//Helper function to find paths (either code or vars firmware) for new UEFIFirmwareDevice
-func selectPath(paths []string) string {
-    for _, path := range paths {
-        if PathExists(path) {
-            return path
-        }
-    }
-    return ""
+func (u UEFIFirmwareDevice) IsSecureBoot() bool {
+	if strings.HasSuffix(u.Code, VMFSecboot) {
+		return true
+	}
+	return false
+}
+
+func (u UEFIFirmwareDevice) Is4MB() bool {
+	if strings.HasSuffix(u.Code, VMF4MB) {
+		return true
+	}
+	return false
+}
+
+func (u UEFIFirmwareDevice) Exists() (bool, error) {
+	if u.Code == "" {
+		return false, fmt.Errorf("UEFIFirmwareDevice.Code is empty: %+v", u)
+	}
+	if u.Vars == "" {
+		return false, fmt.Errorf("UEFIFirmwareDevice.Vars is empty: %+v", u)
+	}
+	codeFound := PathExists(u.Code)
+	varsFound := PathExists(u.Vars)
+	if codeFound && varsFound {
+		return true, nil
+	}
+	missing := []string{}
+	if !codeFound {
+		missing = append(missing, fmt.Sprintf("Code not found at %q", u.Code))
+	}
+	if !varsFound {
+		missing = append(missing, fmt.Sprintf("Vars not found at %q", u.Vars))
+	}
+	return false, fmt.Errorf("Failed to find UEFIFirmwareDevice paths: %s", strings.Join(missing, ", "))
 }
 
 // NewSystemUEFIFirmwareDevice looks at the local system to collect expected
 // OVMF firmware files, callers will need to make a copy of the of the Vars
 // template file before using it in a running VM.
 func NewSystemUEFIFirmwareDevice(useSecureBoot bool) (*UEFIFirmwareDevice, error) {
-	uefiDev := UEFIFirmwareDevice{}
-	//can add in more paths as necessary
-	var SecCodePaths = []string{SecCodePath, SecCodePathAarch64}
-	var SecVarPaths = []string{UbuntuSecVarsAarch64, CentosSecVars, UbuntuSecVarsAarch64}
-	var UnSecCodePaths = []string{UnSecCodePath, UnSecCodePathAarch64}
-	var UnSecVarPaths = []string{UnSecVarsPath, UnSecVarsPathAarch64}
 
-	if (useSecureBoot) {
-		secCode := selectPath(SecCodePaths)
-		if secCode == "" {
-			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot Code file found")
-		}
-		uefiDev.Code = secCode
-		secVars := selectPath(SecVarPaths)
-		if secVars == "" {
-			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot Vars file found")
-		}
-		uefiDev.Vars = secVars
-	} else {
-		codePath := selectPath(UnSecCodePaths)
-		if codePath == "" {
-			codePath = selectPath(SecCodePaths)
-		}
-		if codePath == "" {
-			return &uefiDev, fmt.Errorf("Failed to find UEFI code firmware")
-		}
-		uefiDev.Code = codePath
-		unsecVars := selectPath(UnSecVarPaths)
-		if unsecVars == "" {
-			return &uefiDev, fmt.Errorf("Secureboot requested, but no secureboot Vars file found")
-		}
-		uefiDev.Vars = unsecVars
+	pfx := VMFPrefix()
+	pathBase := VMFPathBase()
+
+	// SecureBoot+4M
+	secBoot4M := UEFIFirmwareDevice{
+		Code: filepath.Join(pathBase, pfx+VMFCode+VMF4MB+VMFSecboot+VMFSuffix), // /usr/share/*VMF/*VMF_CODE_4M.secboot.fd
+		Vars: filepath.Join(pathBase, pfx+VMFVars+VMF4MB+VMFSecboot+VMFSuffix), // OVMF_VARS_4M.secboot.fd
 	}
-	return &uefiDev, nil
+	// SecureBoot+4M+MSVars
+	secBoot4MVarsMs := UEFIFirmwareDevice{
+		Code: filepath.Join(pathBase, pfx+VMFCode+VMF4MB+VMFSecboot+VMFSuffix), // OVMF_CODE_4M.secboot.fd
+		Vars: filepath.Join(pathBase, pfx+VMFVars+VMF4MB+VMFMs+VMFSuffix),      // OVMF_VARS_4M.ms.fd
+	}
+	// SecureBoot
+	secBoot := UEFIFirmwareDevice{
+		Code: filepath.Join(pathBase, pfx+VMFCode+VMFSecboot+VMFSuffix), // OVMF_CODE.secboot.fd
+		Vars: filepath.Join(pathBase, pfx+VMFVars+VMFSecboot+VMFSuffix), // OVMF_VARS.secboot.fd
+	}
+	// SecureBoot+MSVars (amd64 or arm64)
+	secBootVarsMs := UEFIFirmwareDevice{
+		Code: filepath.Join(pathBase, pfx+VMFCode+VMFMs+VMFSuffix), // {O,AA}VMF_CODE.ms.fd
+		Vars: filepath.Join(pathBase, pfx+VMFVars+VMFMs+VMFSuffix), // {O,AA}VMF_VARS.ms.fd
+	}
+	// Insecure+4M
+	insecureBoot4M := UEFIFirmwareDevice{
+		Code: filepath.Join(pathBase, pfx+VMFCode+VMF4MB+VMFSuffix), // OVMF_CODE_4M.fd
+		Vars: filepath.Join(pathBase, pfx+VMFVars+VMF4MB+VMFSuffix), // OVMF_Vars_4M.fd
+	}
+
+	// Insecure
+	insecure := UEFIFirmwareDevice{
+		Code: filepath.Join(pathBase, pfx+VMFCode+VMFSuffix), // {O,AA}VMF_CODE.fd
+		Vars: filepath.Join(pathBase, pfx+VMFVars+VMFSuffix), // {O,AA}VMF_Vars.fd
+	}
+
+	var found bool
+	var err error
+	if useSecureBoot {
+		// 4M  and .secboot variants are only on x86
+		switch runtime.GOARCH {
+		case "amd64", "x86_64":
+			found, err = secBoot4MVarsMs.Exists()
+			if err != nil {
+				return &UEFIFirmwareDevice{}, fmt.Errorf("SecureBoot 4M MS Vars erorr: %s", err)
+			}
+			if found {
+				return &secBoot4MVarsMs, nil
+			}
+			found, err = secBoot4M.Exists()
+			if err != nil {
+				return &UEFIFirmwareDevice{}, fmt.Errorf("SecureBoot 4M Vars error: %s", err)
+			}
+			if found {
+				return &secBoot4M, nil
+			}
+			found, err = secBoot.Exists()
+			if found {
+				return &secBoot, nil
+			}
+			if err != nil {
+				return &UEFIFirmwareDevice{}, fmt.Errorf("SecureBoot Vars error: %s", err)
+			}
+
+		}
+		found, err = secBootVarsMs.Exists()
+		if err != nil {
+			return &UEFIFirmwareDevice{}, fmt.Errorf("SecureBoot MS Vars error: %s", err)
+		}
+		if found {
+			return &secBootVarsMs, nil
+		}
+
+		return &UEFIFirmwareDevice{}, fmt.Errorf("%sVMF secureboot code,vars missing, check: %s", pfx, pathBase)
+	}
+
+	switch runtime.GOARCH {
+	case "amd64", "x86_64":
+		found, err = insecureBoot4M.Exists()
+		if err != nil {
+			return &UEFIFirmwareDevice{}, err
+		}
+		if found {
+			return &insecureBoot4M, nil
+		}
+	}
+	found, err = insecure.Exists()
+	if found {
+		return &insecure, nil
+	}
+
+	return &UEFIFirmwareDevice{}, fmt.Errorf("%sVMF code,vars missing, check: %s", pfx, pathBase)
 }
