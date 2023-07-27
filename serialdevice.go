@@ -110,11 +110,21 @@ type SerialDevice struct {
 	// ID is the serial device identifier.
 	ID string
 
-	// DisableModern prevents qemu from relying on fast MMIO.
-	DisableModern bool
+	// PCI Slot
+	Addr string
 
 	// ROMFile specifies the ROM file being used for this device.
 	ROMFile string
+
+	// MaxPorts is the maximum number of ports for this device. (note: 1, 2, or 4 for pci-serial driver)
+	MaxPorts uint
+
+	//Enable Multifunction
+	Multifunction bool
+
+	//virtio-serial specific attributes
+	// DisableModern prevents qemu from relying on fast MMIO.
+	DisableModern bool
 
 	// DevNo identifies the ccw devices for s390x architecture
 	DevNo string
@@ -122,8 +132,9 @@ type SerialDevice struct {
 	// Transport is the virtio transport for this device.
 	Transport VirtioTransport
 
-	// MaxPorts is the maximum number of ports for this device.
-	MaxPorts uint
+	//pci-serial specific attributes
+	//Chardev associated with PCISerialDevice
+	ChardevIDs []string
 }
 
 // Valid returns true if the SerialDevice structure is valid and complete.
@@ -133,6 +144,17 @@ func (dev SerialDevice) Valid() error {
 	}
 	if dev.ID == "" {
 		return fmt.Errorf("SerialDevice has empty ID field")
+	}
+	if dev.Driver == PCISerialDevice {
+		if len(dev.ChardevIDs) > 4 || len(dev.ChardevIDs) == 0 {
+			return fmt.Errorf("PCISerialDeviceDevice has a malformed list of ChardevIDs (length 0 or length > 4)")
+		}
+		if dev.ChardevIDs[0] == "" {
+			return fmt.Errorf("PCISerialDeviceDevice has no associated ChardevID")
+		}
+		if dev.MaxPorts != 1 && dev.MaxPorts != 2 && dev.MaxPorts != 4 {
+			return fmt.Errorf("PCISerialDeviceDevice has MaxPorts not equal to 1, 2, or 4")
+		}
 	}
 
 	return nil
@@ -144,22 +166,49 @@ func (dev SerialDevice) QemuParams(config *Config) []string {
 	var qemuParams []string
 
 	deviceParams = append(deviceParams, dev.deviceName(config))
-	if s := dev.Transport.disableModern(config, dev.DisableModern); s != "" {
-		deviceParams = append(deviceParams, s)
-	}
 	deviceParams = append(deviceParams, fmt.Sprintf("id=%s", dev.ID))
-	if dev.Transport.isVirtioPCI(config) && dev.ROMFile != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", dev.ROMFile))
-		if dev.Driver == VirtioSerial && dev.MaxPorts != 0 {
+	if dev.Addr != "" {
+		deviceParams = append(deviceParams, fmt.Sprintf("addr=%s", dev.Addr))
+	}
+	if dev.ROMFile != "" {
+		if dev.Driver == PCISerialDevice || dev.Transport.isVirtioPCI(config) {
+			deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", dev.ROMFile))
+		}
+	}
+	if dev.Multifunction {
+		deviceParams = append(deviceParams, "multifunction=on")
+	}
+	switch dev.Driver {
+	case VirtioSerial:
+		if s := dev.Transport.disableModern(config, dev.DisableModern); s != "" {
+			deviceParams = append(deviceParams, s)
+		}
+		if dev.Transport.isVirtioPCI(config) && dev.MaxPorts != 0 {
 			deviceParams = append(deviceParams, fmt.Sprintf("max_ports=%d", dev.MaxPorts))
 		}
-	}
-
-	if dev.Transport.isVirtioCCW(config) {
-		if config.Knobs.IOMMUPlatform {
-			deviceParams = append(deviceParams, "iommu_platform=on")
+		if dev.Transport.isVirtioCCW(config) {
+			if config.Knobs.IOMMUPlatform {
+				deviceParams = append(deviceParams, "iommu_platform=on")
+			}
+			deviceParams = append(deviceParams, fmt.Sprintf("devno=%s", dev.DevNo))
 		}
-		deviceParams = append(deviceParams, fmt.Sprintf("devno=%s", dev.DevNo))
+	case PCISerialDevice:
+		if dev.MaxPorts == 1 {
+			deviceParams = append(deviceParams, fmt.Sprintf("chardev=%s", dev.ChardevIDs[0]))
+		} else {
+			deviceParams = append(deviceParams, fmt.Sprintf("chardev1=%s", dev.ChardevIDs[0]))
+			if len(dev.ChardevIDs) > 1 && dev.ChardevIDs[1] != "" {
+				deviceParams = append(deviceParams, fmt.Sprintf("chardev2=%s", dev.ChardevIDs[1]))
+			}
+			if dev.MaxPorts == 4 {
+				if len(dev.ChardevIDs) > 2 && dev.ChardevIDs[2] != "" {
+					deviceParams = append(deviceParams, fmt.Sprintf("chardev3=%s", dev.ChardevIDs[2]))
+				}
+				if len(dev.ChardevIDs) == 4 && dev.ChardevIDs[3] != "" {
+					deviceParams = append(deviceParams, fmt.Sprintf("chardev4=%s", dev.ChardevIDs[3]))
+				}
+			}
+		}
 	}
 
 	qemuParams = append(qemuParams, "-device")
@@ -171,14 +220,21 @@ func (dev SerialDevice) QemuParams(config *Config) []string {
 // deviceName returns the QEMU device name for the current combination of
 // driver and transport.
 func (dev SerialDevice) deviceName(config *Config) string {
-	if dev.Transport == "" {
-		dev.Transport = dev.Transport.defaultTransport(config)
+	var devNameStr string
+	if dev.Driver == VirtioSerial {
+		if dev.Transport == "" {
+			dev.Transport = dev.Transport.defaultTransport(config)
+		}
+		devNameStr = VirtioSerialTransport[dev.Transport]
 	}
-
-	switch dev.Driver {
-	case VirtioSerial:
-		return VirtioSerialTransport[dev.Transport]
+	if dev.Driver == PCISerialDevice {
+		add_str := ""
+		if dev.MaxPorts == 2 {
+			add_str = "-2x"
+		} else if dev.MaxPorts == 4 {
+			add_str = "-4x"
+		}
+		devNameStr = fmt.Sprintf("%s%s", dev.Driver, add_str)
 	}
-
-	return string(dev.Driver)
+	return devNameStr
 }
