@@ -17,9 +17,9 @@ limitations under the License.
 package qcli
 
 import (
-	"testing"
-	"runtime"
 	"fmt"
+	"runtime"
+	"testing"
 )
 
 var ValidTPM = TPMDevice{
@@ -35,7 +35,7 @@ func TestTPMDevice(t *testing.T) {
 		chardevName = "tpm-tis-device"
 	}
 	chardevStr := fmt.Sprintf("-chardev socket,id=chrtpm0,path=tpm.socket -tpmdev emulator,id=tpm0,chardev=chrtpm0 -device %s,tpmdev=tpm0", chardevName)
-		
+
 	testCases := []struct {
 		dev Device
 		out string
