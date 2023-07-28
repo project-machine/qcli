@@ -1,4 +1,4 @@
-module github.com/raharper/qcli
+module github.com/project-machine/qcli
 
 go 1.19
 
