@@ -8,7 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
 type QemuDisk struct {
@@ -245,7 +245,7 @@ func NewDefaultConfig(name string, numCpus, numMemMB uint32) (*qcli.Config, erro
 		SMP:           smp,
 		Memory:        mem,
 		RngDevices: []qcli.RngDevice{
-			qcli.RngDevice{
+			{
 				Driver:    qcli.VirtioRng,
 				ID:        "rng0",
 				Bus:       "pcie.0",
