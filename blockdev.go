@@ -55,6 +55,20 @@ const (
 	DiscardUnmap  DiscardMode = "unmap"
 )
 
+type FATMode int
+
+const (
+	FATMode12 FATMode = 12
+	FATMode16 FATMode = 16
+	FATMode32 FATMode = 32
+)
+
+var FATModes = map[FATMode]bool{
+	FATMode12: true,
+	FATMode16: true,
+	FATMode32: true,
+}
+
 // BlockDeviceInterface defines the type of interface the device is connected to.
 type BlockDeviceInterface string
 
@@ -146,6 +160,32 @@ type BlockDevice struct {
 	// DriveOnly is a boolean to skip any -device paramters
 	// This is currently used for OVMF/UEFI pflash disk only devices
 	DriveOnly bool `yaml:"emit-drive-only"`
+
+	// VVFAT driver options
+	VVFATDev VVFATDev `yaml:"vvfat-device"`
+}
+
+type VVFATDev struct {
+	Directory string          `yaml:"dir"`
+	Driver    DeviceDriver    `yaml:"driver"`
+	FATMode   FATMode         `yaml:"fat-type"` // 12, 16, or 32
+	Floppy    bool            `yaml:"floppy"`
+	Label     string          `yaml:"label"`
+	Transport VirtioTransport `yaml:"transport"`
+	ReadWrite bool            `yaml:"rw"` // default read-only
+}
+
+func (v VVFATDev) deviceName(config *Config) string {
+	if v.Transport == "" {
+		v.Transport = v.Transport.defaultTransport(config)
+	}
+
+	switch v.Driver {
+	case VirtioBlock:
+		return VirtioBlockTransport[v.Transport]
+	}
+
+	return string(v.Driver)
 }
 
 // VirtioBlockTransport is a map of the virtio-blk device name that corresponds
@@ -158,25 +198,35 @@ var VirtioBlockTransport = map[VirtioTransport]string{
 
 // Valid returns true if the BlockDevice structure is valid and complete.
 func (blkdev BlockDevice) Valid() error {
+
 	if blkdev.ID == "" {
 		return fmt.Errorf("BlockDevice missing ID")
 	}
 	if blkdev.Driver == "" {
 		return fmt.Errorf("BlockDevice ID=%s missing Driver", blkdev.ID)
 	}
-	if blkdev.File == "" {
-		return fmt.Errorf("BlockDevice ID=%s missing File", blkdev.ID)
+	switch blkdev.Driver {
+	case VVFAT:
+		if blkdev.VVFATDev.Directory == "" {
+			return fmt.Errorf("BlockDevice ID=%s VVFAT missing required Directory", blkdev.ID)
+		}
+		if ok := FATModes[blkdev.VVFATDev.FATMode]; !ok {
+			return fmt.Errorf("BlockDevice ID=%s VVFAT invalid FATMode %d", blkdev.ID, blkdev.VVFATDev.FATMode)
+		}
+	default:
+		if blkdev.File == "" {
+			return fmt.Errorf("BlockDevice ID=%s missing File", blkdev.ID)
+		}
+		if blkdev.Interface == "" {
+			return fmt.Errorf("BlockDevice ID=%s missing Interface", blkdev.ID)
+		}
+		if blkdev.Format == "" {
+			return fmt.Errorf("BlockDevice ID=%s missing Format", blkdev.ID)
+		}
+		if blkdev.RotationRate > 0 && strings.HasPrefix(string(blkdev.Driver), "virtio") {
+			return fmt.Errorf("BlockDevice ID=%s with RotationRate cannot be Driver=virtio*", blkdev.ID)
+		}
 	}
-	if blkdev.Interface == "" {
-		return fmt.Errorf("BlockDevice ID=%s missing Interface", blkdev.ID)
-	}
-	if blkdev.Format == "" {
-		return fmt.Errorf("BlockDevice ID=%s missing Format", blkdev.ID)
-	}
-	if blkdev.RotationRate > 0 && strings.HasPrefix(string(blkdev.Driver), "virtio") {
-		return fmt.Errorf("BlockDevice ID=%s with RotationRate cannot be Driver=virtio*", blkdev.ID)
-	}
-
 	return nil
 }
 
@@ -184,116 +234,152 @@ func (blkdev BlockDevice) Valid() error {
 // QemuParams returns the qemu parameters built out of this block device.
 func (blkdev BlockDevice) QemuParams(config *Config) []string {
 	var driveParams []string
+	var blockdevParams []string
 	var deviceParams []string
 	var qemuParams []string
 
-	// drive parameters
-	driveParams = append(driveParams, fmt.Sprintf("file=%s", blkdev.File))
-	driveParams = append(driveParams, fmt.Sprintf("id=%s", blkdev.ID))
-	driveParams = append(driveParams, fmt.Sprintf("if=%s", blkdev.Interface))
-	driveParams = append(driveParams, fmt.Sprintf("format=%s", blkdev.Format))
-
-	if blkdev.AIO != "" {
-		driveParams = append(driveParams, fmt.Sprintf("aio=%s", blkdev.AIO))
-	}
-
-	if blkdev.Cache != "" {
-		driveParams = append(driveParams, fmt.Sprintf("cache=%s", blkdev.Cache))
-	}
-
-	if blkdev.Discard != "" {
-		driveParams = append(driveParams, fmt.Sprintf("discard=%s", blkdev.Discard))
-	}
-
-	if blkdev.DetectZeroes != "" {
-		driveParams = append(driveParams, fmt.Sprintf("detect-zeroes=%s", blkdev.DetectZeroes))
-	}
-
-	if blkdev.Media != "" {
-		driveParams = append(driveParams, fmt.Sprintf("media=%s", blkdev.Media))
-	}
-
-	if blkdev.ReadOnly {
-		driveParams = append(driveParams, "readonly=on")
-	}
-
-	qemuParams = append(qemuParams, "-drive")
-	qemuParams = append(qemuParams, strings.Join(driveParams, ","))
-
-	// for DriveOnly blockdev devices, no need for -device params
-	if blkdev.DriveOnly {
-		return qemuParams
-	}
-
-	// All device parameters must be after DriveOnly
-	deviceParams = append(deviceParams, blkdev.deviceName(config))
-	deviceParams = append(deviceParams, fmt.Sprintf("drive=%s", blkdev.ID))
-	if blkdev.Serial != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("serial=%s", blkdev.Serial))
-	} else {
-		deviceParams = append(deviceParams, fmt.Sprintf("serial=%s", blkdev.ID))
-	}
-
-	if blkdev.BootIndex != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("bootindex=%s", blkdev.BootIndex))
-	}
-
-	if blkdev.Driver == VirtioBlock {
-		if s := blkdev.Transport.disableModern(config, blkdev.DisableModern); s != "" {
-			deviceParams = append(deviceParams, s)
+	switch blkdev.Driver {
+	case VVFAT:
+		blockdevParams = append(blockdevParams, fmt.Sprintf("driver=%s", blkdev.deviceName(config)))
+		blockdevParams = append(blockdevParams, fmt.Sprintf("node-name=%s", blkdev.ID))
+		blockdevParams = append(blockdevParams, fmt.Sprintf("dir=%s", blkdev.VVFATDev.Directory))
+		if blkdev.VVFATDev.FATMode > 0 {
+			blockdevParams = append(blockdevParams, fmt.Sprintf("fat-type=%d", blkdev.VVFATDev.FATMode))
+		} else {
+			blockdevParams = append(blockdevParams, "fat-type=32")
 		}
 
-		// virtio can have a BusAddr since they are pci devices
-		addr := config.pciBusSlots.GetSlot(blkdev.BusAddr)
-		if addr > 0 {
-			deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
-			bus := "pcie.0"
+		if blkdev.VVFATDev.Floppy {
+			blockdevParams = append(blockdevParams, "floppy=on")
+		} else {
+			blockdevParams = append(blockdevParams, "floppy=off")
+		}
+
+		if blkdev.VVFATDev.Label != "" {
+			blockdevParams = append(blockdevParams, fmt.Sprintf("label=%s", blkdev.VVFATDev.Label))
+		}
+
+		if blkdev.VVFATDev.ReadWrite {
+			blockdevParams = append(blockdevParams, "read-only=off")
+		} else {
+			blockdevParams = append(blockdevParams, "read-only=on")
+		}
+
+		deviceParams = append(deviceParams, blkdev.VVFATDev.deviceName(config))
+		deviceParams = append(deviceParams, fmt.Sprintf("drive=%s", blkdev.ID))
+
+		qemuParams = append(qemuParams, "-blockdev")
+		qemuParams = append(qemuParams, strings.Join(blockdevParams, ","))
+
+	default:
+		// drive parameters
+		driveParams = append(driveParams, fmt.Sprintf("file=%s", blkdev.File))
+		driveParams = append(driveParams, fmt.Sprintf("id=%s", blkdev.ID))
+		driveParams = append(driveParams, fmt.Sprintf("if=%s", blkdev.Interface))
+		driveParams = append(driveParams, fmt.Sprintf("format=%s", blkdev.Format))
+
+		if blkdev.AIO != "" {
+			driveParams = append(driveParams, fmt.Sprintf("aio=%s", blkdev.AIO))
+		}
+
+		if blkdev.Cache != "" {
+			driveParams = append(driveParams, fmt.Sprintf("cache=%s", blkdev.Cache))
+		}
+
+		if blkdev.Discard != "" {
+			driveParams = append(driveParams, fmt.Sprintf("discard=%s", blkdev.Discard))
+		}
+
+		if blkdev.DetectZeroes != "" {
+			driveParams = append(driveParams, fmt.Sprintf("detect-zeroes=%s", blkdev.DetectZeroes))
+		}
+
+		if blkdev.Media != "" {
+			driveParams = append(driveParams, fmt.Sprintf("media=%s", blkdev.Media))
+		}
+
+		if blkdev.ReadOnly {
+			driveParams = append(driveParams, "readonly=on")
+		}
+
+		qemuParams = append(qemuParams, "-drive")
+		qemuParams = append(qemuParams, strings.Join(driveParams, ","))
+
+		// for DriveOnly blockdev devices, no need for -device params
+		if blkdev.DriveOnly {
+			return qemuParams
+		}
+
+		// All device parameters must be after DriveOnly
+		deviceParams = append(deviceParams, blkdev.deviceName(config))
+		deviceParams = append(deviceParams, fmt.Sprintf("drive=%s", blkdev.ID))
+		if blkdev.Serial != "" {
+			deviceParams = append(deviceParams, fmt.Sprintf("serial=%s", blkdev.Serial))
+		} else {
+			deviceParams = append(deviceParams, fmt.Sprintf("serial=%s", blkdev.ID))
+		}
+
+		if blkdev.BootIndex != "" {
+			deviceParams = append(deviceParams, fmt.Sprintf("bootindex=%s", blkdev.BootIndex))
+		}
+
+		if blkdev.Driver == VirtioBlock {
+			if s := blkdev.Transport.disableModern(config, blkdev.DisableModern); s != "" {
+				deviceParams = append(deviceParams, s)
+			}
+
+			// virtio can have a BusAddr since they are pci devices
+			addr := config.pciBusSlots.GetSlot(blkdev.BusAddr)
+			if addr > 0 {
+				deviceParams = append(deviceParams, fmt.Sprintf("addr=0x%02x", addr))
+				bus := "pcie.0"
+				if blkdev.Bus != "" {
+					bus = blkdev.Bus
+				}
+				deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", bus))
+			}
+		}
+
+		if blkdev.Driver == SCSIHD && blkdev.Bus != "" {
+			deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", blkdev.Bus))
+		}
+
+		if blkdev.Driver == IDECDROM {
+			bus := "ide.0"
 			if blkdev.Bus != "" {
 				bus = blkdev.Bus
 			}
 			deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", bus))
 		}
-	}
 
-	if blkdev.Driver == SCSIHD && blkdev.Bus != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", blkdev.Bus))
-	}
-
-	if blkdev.Driver == IDECDROM {
-		bus := "ide.0"
-		if blkdev.Bus != "" {
-			bus = blkdev.Bus
+		if blkdev.RotationRate > 0 && !strings.HasPrefix(string(blkdev.Driver), "virtio") {
+			deviceParams = append(deviceParams, fmt.Sprintf("rotation_rate=%d", blkdev.RotationRate))
 		}
-		deviceParams = append(deviceParams, fmt.Sprintf("bus=%s", bus))
-	}
 
-	if blkdev.RotationRate > 0 && !strings.HasPrefix(string(blkdev.Driver), "virtio") {
-		deviceParams = append(deviceParams, fmt.Sprintf("rotation_rate=%d", blkdev.RotationRate))
-	}
+		if blkdev.BlockSize > 0 {
+			deviceParams = append(deviceParams, fmt.Sprintf("logical_block_size=%d", blkdev.BlockSize))
+			deviceParams = append(deviceParams, fmt.Sprintf("physical_block_size=%d", blkdev.BlockSize))
+		}
 
-	if blkdev.BlockSize > 0 {
-		deviceParams = append(deviceParams, fmt.Sprintf("logical_block_size=%d", blkdev.BlockSize))
-		deviceParams = append(deviceParams, fmt.Sprintf("physical_block_size=%d", blkdev.BlockSize))
-	}
+		if !blkdev.SCSI && blkdev.Driver != IDECDROM {
+			deviceParams = append(deviceParams, "scsi=off")
+		}
 
-	if !blkdev.SCSI && blkdev.Driver != IDECDROM {
-		deviceParams = append(deviceParams, "scsi=off")
-	}
+		if !blkdev.WCE && blkdev.Driver == VirtioBlock {
+			deviceParams = append(deviceParams, "config-wce=off")
+		}
 
-	if !blkdev.WCE && blkdev.Driver == VirtioBlock {
-		deviceParams = append(deviceParams, "config-wce=off")
-	}
+		if blkdev.Transport.isVirtioPCI(config) && blkdev.ROMFile != "" {
+			deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", blkdev.ROMFile))
+		}
 
-	if blkdev.Transport.isVirtioPCI(config) && blkdev.ROMFile != "" {
-		deviceParams = append(deviceParams, fmt.Sprintf("romfile=%s", blkdev.ROMFile))
-	}
+		if blkdev.Transport.isVirtioCCW(config) {
+			deviceParams = append(deviceParams, fmt.Sprintf("devno=%s", blkdev.DevNo))
+		}
 
-	if blkdev.Transport.isVirtioCCW(config) {
-		deviceParams = append(deviceParams, fmt.Sprintf("devno=%s", blkdev.DevNo))
-	}
-
-	if blkdev.ShareRW {
-		deviceParams = append(deviceParams, "share-rw=on")
+		if blkdev.ShareRW {
+			deviceParams = append(deviceParams, "share-rw=on")
+		}
 	}
 
 	qemuParams = append(qemuParams, "-device")

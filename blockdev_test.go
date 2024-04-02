@@ -11,6 +11,7 @@ var (
 	deviceBlockIDECDRom       = "-drive file=ubuntu.iso,id=cdrom0,if=none,format=raw,aio=threads,media=cdrom,readonly=on -device ide-cd,drive=cdrom0,serial=ubuntu.iso,bootindex=0,bus=ide.0"
 	deviceBlockSCSIHDStr      = "-drive file=root-disk.qcow,id=drive0,if=none,format=qcow2,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device scsi-hd,drive=drive0,serial=root-disk,bootindex=1,bus=scsi0.0,logical_block_size=512,physical_block_size=512"
 	deviceBlockUSBHDStr       = "-drive file=disk0-usb.img,id=drive1,if=none,format=raw,aio=threads,cache=unsafe,discard=unmap,detect-zeroes=unmap -device usb-storage,drive=drive1,serial=disk0-usb,logical_block_size=512,physical_block_size=512"
+	deviceBlockVVFATBlkdev    = "-blockdev driver=vvfat,node-name=cidata,dir=seed,fat-type=32,floppy=off,label=CIDATA,read-only=on -device virtio-blk-pci,drive=cidata"
 )
 
 func TestAppendDeviceBlock(t *testing.T) {
@@ -158,4 +159,34 @@ func TestAppendDeviceBlockUSBHD(t *testing.T) {
 		BlockSize:    512,
 	}
 	testAppend(blkdev, deviceBlockUSBHDStr, t)
+}
+
+func TestAppendVVFatBlockDev(t *testing.T) {
+	blkdev := BlockDevice{
+		Driver: VVFAT,
+		ID:     "cidata",
+		VVFATDev: VVFATDev{
+			Driver:    VirtioBlock,
+			Directory: "seed",
+			Label:     "CIDATA",
+			ReadWrite: false,
+			FATMode:   FATMode32,
+		},
+	}
+	testAppend(blkdev, deviceBlockVVFATBlkdev, t)
+}
+
+func TestAppendVVFatBlockDevInvaidMode(t *testing.T) {
+	blkdev := BlockDevice{
+		Driver: VVFAT,
+		ID:     "badfatmode",
+		VVFATDev: VVFATDev{
+			Directory: "mydir",
+			FATMode:   FATMode(14),
+		},
+	}
+	err := blkdev.Valid()
+	if err == nil {
+		t.Fatalf("expected FATMode invalid error, got nil")
+	}
 }
