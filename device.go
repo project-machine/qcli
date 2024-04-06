@@ -119,6 +119,9 @@ const (
 	//VhostUserFS represents a virtio-fs vhostuser device type
 	VhostUserFS DeviceDriver = "vhost-user-fs"
 
+	//VVFAT represents a virtual VFAT block device
+	VVFAT DeviceDriver = "vvfat"
+
 	// PCIBridgeDriver represents a PCI bridge device type.
 	PCIBridgeDriver DeviceDriver = "pci-bridge"
 
