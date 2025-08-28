@@ -1,50 +1,31 @@
-# This workflow will build a golang project
-# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-go
-
 name: Go
-
 on:
   push:
     branches: [ "main" ]
   pull_request:
     branches: [ "main" ]
-
 jobs:
-
-  build_test_amd64:
-    name: Build on ubuntu-latest amd64
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            arch: amd64
+            build: true
+          - os: ubuntu-24.04-arm
+            arch: arm64
+            build: true
     steps:
-    - uses: actions/checkout@v3
-
-    - name: Set up Go
-      uses: actions/setup-go@v3
-      with:
-        go-version: 1.19
-
-    - name: Test
-      run: go test -v .
-
-  build_test_arm64:
-    runs-on: ubuntu-latest
-    name: Build on ubuntu-latest arm64
-    steps:
-      - uses: actions/checkout@v3
-      - uses: uraimo/run-on-arch-action@v2
-        name: Run commands
-        id: runcmd
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Set up golang
+        uses: actions/setup-go@v5
         with:
-          arch: aarch64
-          distro: ubuntu22.04
-
-          # speeds up builds by storing container images in a GitHub package registry.
-          githubToken: ${{ github.token }}
-
-          install: |
-            apt-get -y update;
-            apt-get install -q -y git golang-go;
-            which go;
-
-          run: |
-            go version;
-            go test -v .;
+          go-version: 1.24
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install golang make
+      - name: Run go test
+        run: go test -v .
